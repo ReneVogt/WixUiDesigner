@@ -1,4 +1,14 @@
-﻿using System;
+﻿/*
+ * (C) René Vogt
+ *
+ * Published under MIT license as described in the LICENSE.md file.
+ *
+ */
+#nullable enable
+
+using System;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
 using Microsoft.VisualStudio.Shell;
@@ -7,49 +17,44 @@ using Task = System.Threading.Tasks.Task;
 
 namespace WixUiDesigner
 {
-    /// <summary>
-    /// This is the class that implements the package exposed by this assembly.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// The minimum requirement for a class to be considered a valid package for Visual Studio
-    /// is to implement the IVsPackage interface and register itself with the shell.
-    /// This package uses the helper classes defined inside the Managed Package Framework (MPF)
-    /// to do it: it derives from the Package class that provides the implementation of the
-    /// IVsPackage interface and uses the registration attributes defined in the framework to
-    /// register itself and its components with the shell. These attributes tell the pkgdef creation
-    /// utility what data to put into .pkgdef file.
-    /// </para>
-    /// <para>
-    /// To get loaded into VS, the package must be referred by &lt;Asset Type="Microsoft.VisualStudio.VsPackage" ...&gt; in .vsixmanifest file.
-    /// </para>
-    /// </remarks>
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
-    [Guid(WixUiDesignerPackage.PackageGuidString)]
+    [Guid(PackageGuidString)]
     [ProvideAutoLoad(UIContextGuids.NoSolution, PackageAutoLoadFlags.BackgroundLoad)]
+    [ProvideOptionPage(typeof(Options), "WiX UI Designer", "WiX UI Designer Options", 0, 0, true)]
     public sealed class WixUiDesignerPackage : AsyncPackage
     {
-        /// <summary>
-        /// WixUiDesignerPackage GUID string.
-        /// </summary>
         public const string PackageGuidString = "13c4f662-6ebc-4dbd-9e57-165c8f7dbcbf";
 
-        #region Package Members
+        readonly object sync = new object();
 
-        /// <summary>
-        /// Initialization of the package; this method is called right after the package is sited, so this is the place
-        /// where you can put all the initialization code that rely on services provided by VisualStudio.
-        /// </summary>
-        /// <param name="cancellationToken">A cancellation token to monitor for initialization cancellation, which can occur when VS is shutting down.</param>
-        /// <param name="progress">A provider for progress updates.</param>
-        /// <returns>A task representing the async work of package initialization, or an already completed task if there is none. Do not return null from this method.</returns>
-        protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
+        Options? options;
+        public Options? Options
         {
-            // When initialized asynchronously, the current thread may be a background thread at this point.
-            // Do any initialization that requires the UI thread after switching to the UI thread.
-            await this.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+            get => options;
+            private set
+            {
+                lock (sync)
+                {
+                    if (ReferenceEquals(options, value)) return;
+                    if (options is { }) options.PropertyChanged -= OnOptionChanged;
+                    options = value;
+                    if (options is { }) options.PropertyChanged += OnOptionChanged;
+                    OnOptionsChanged();
+                }
+            }
         }
 
-        #endregion
+        protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
+        {
+            await this.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+            Options = (Options)GetDialogPage(typeof(Options));
+        }
+
+        void OnOptionChanged(object sender, PropertyChangedEventArgs e) => OnOptionsChanged(e.PropertyName);
+        void OnOptionsChanged(string? optionName = null)
+        {
+            if (optionName is not null && optionName != nameof(Options.DebugContext)) return;
+            Debug.WriteLine($"DebugContext: {Options?.DebugContext.ToString() ?? "null"}");
+        }
     }
 }
