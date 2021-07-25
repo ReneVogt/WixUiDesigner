@@ -8,26 +8,25 @@
 
 using System;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
+using WixUiDesigner.Logging;
 using Task = System.Threading.Tasks.Task;
 
 namespace WixUiDesigner
 {
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
-    [Guid(PackageGuidString)]
+    [Guid(Defines.PackageGuidString)]
     [ProvideAutoLoad(UIContextGuids.NoSolution, PackageAutoLoadFlags.BackgroundLoad)]
-    [ProvideOptionPage(typeof(Options), "WiX UI Designer", "WiX UI Designer Options", 0, 0, true)]
+    [ProvideOptionPage(typeof(Options), Defines.ProductName, Defines.ProductName + " Options", 0, 0, true)]
     public sealed class WixUiDesignerPackage : AsyncPackage
     {
-        public const string PackageGuidString = "13c4f662-6ebc-4dbd-9e57-165c8f7dbcbf";
-
         readonly object sync = new object();
-
+        readonly Logger logger;
         Options? options;
+
         public Options? Options
         {
             get => options;
@@ -44,17 +43,23 @@ namespace WixUiDesigner
             }
         }
 
+        public WixUiDesignerPackage()
+        {
+            logger = new Logger(this, JoinableTaskFactory);
+        }
+
         protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
         {
-            await this.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+            await JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
             Options = (Options)GetDialogPage(typeof(Options));
+            await logger.LogAsync(DebugContext.Package, "Package initialized.", cancellationToken);
         }
 
         void OnOptionChanged(object sender, PropertyChangedEventArgs e) => OnOptionsChanged(e.PropertyName);
         void OnOptionsChanged(string? optionName = null)
         {
             if (optionName is not null && optionName != nameof(Options.DebugContext)) return;
-            Debug.WriteLine($"DebugContext: {Options?.DebugContext.ToString() ?? "null"}");
+            logger.DebugContext = Options?.DebugContext ?? DebugContext.None;
         }
     }
 }

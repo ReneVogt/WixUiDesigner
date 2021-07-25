@@ -57,7 +57,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Defines.cs" />
     <Compile Include="Logging\DebugContext.cs" />
+    <Compile Include="Logging\Logger.cs" />
     <Compile Include="Options.cs">
       <SubType>Component</SubType>
     </Compile>
