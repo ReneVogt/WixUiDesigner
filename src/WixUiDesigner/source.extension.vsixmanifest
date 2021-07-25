@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="WixUiDesigner.46aa3611-a3b6-45bf-8546-1fd1c88684fe" Version="0.1" Language="en-US" Publisher="René Vogt" />
-        <DisplayName>WixUiDesigner</DisplayName>
-        <Description xml:space="preserve">A designer for WiX UI fragments.</Description>
-        <License>../LICENSE.md</License>
-        <Tags>WiX UI Designer</Tags>
+        <Identity Id="WixUiDesigner.7e2138e0-147e-4866-a851-1c6af6189ba1" Version="0.1.0.0" Language="en-US" Publisher="René Vogt" />
+        <DisplayName>WiX UI Designer</DisplayName>
+        <Description xml:space="preserve">A desginer for WiX UI fragments.</Description>
+        <License>Resources\LICENSE.md</License>
+        <Tags>WiX UI designer</Tags>
     </Metadata>
     <Installation>
         <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[16.0, 17.0)" />
@@ -16,4 +16,7 @@
     <Prerequisites>
         <Prerequisite Id="Microsoft.VisualStudio.Component.CoreEditor" Version="[16.0,17.0)" DisplayName="Visual Studio core editor" />
     </Prerequisites>
+    <Assets>
+        <Asset Type="Microsoft.VisualStudio.VsPackage" d:Source="Project" d:ProjectName="%CurrentProject%" Path="|%CurrentProject%;PkgdefProjectOutputGroup|" />
+    </Assets>
 </PackageManifest>
