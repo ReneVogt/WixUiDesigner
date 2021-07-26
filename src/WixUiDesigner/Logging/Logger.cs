@@ -46,12 +46,19 @@ namespace WixUiDesigner.Logging
         public async Task LogAsync(DebugContext context, string message, CancellationToken cancellationToken = default)
         {
             if ((context & DebugContext) == 0) return;
+            await LogAsync(message, false, cancellationToken);
+        }
+        public async Task LogErrorAsync(string message, CancellationToken cancellationToken = default) =>
+            await LogAsync(message, true, cancellationToken);
 
+        async Task LogAsync(string message, bool forceVisible, CancellationToken cancellationToken)
+        {
             try
             {
                 if (!(await PaneIsAccessibleAsync(cancellationToken))) return;
                 await joinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
                 pane?.OutputString(DateTime.Now + ": " + message + Environment.NewLine);
+                if (forceVisible) pane?.Activate();
             }
             catch
             {

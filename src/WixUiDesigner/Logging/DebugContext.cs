@@ -17,7 +17,9 @@ namespace WixUiDesigner.Logging
         None = 0,
 
         Package = 1 << 0,
-        Editor = 1 << 1,
+        EditorFactory = 1 << 1,
+        EditorPane = 1 << 2,
+        EditorControl = 1 << 3,
 
         All = -1
     }

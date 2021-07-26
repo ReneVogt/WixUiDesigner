@@ -12,6 +12,7 @@ using System.Threading;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
+using WixUiDesigner.Editor;
 using WixUiDesigner.Logging;
 using Task = System.Threading.Tasks.Task;
 
@@ -21,26 +22,21 @@ namespace WixUiDesigner
 {
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [Guid(Defines.PackageGuidString)]
-    [InstalledProductRegistration("#110", "#112", "0.1.0.0", IconResourceID = 400)]
+    [InstalledProductRegistration("#110", "#112", "0.1.0.0")]
     [ProvideMenuResource("Menus.ctmenu", 1)]
 
     [ProvideAutoLoad(UIContextGuids.NoSolution, PackageAutoLoadFlags.BackgroundLoad)]
     [ProvideOptionPage(typeof(Options), Defines.ProductName, Defines.ProductName + " Options", 0, 0, true)]
 
-    [ProvideEditorFactory(typeof(EditorFactory), 110, CommonPhysicalViewAttributes = (int)__VSPHYSICALVIEWATTRIBUTES.PVA_None, TrustLevel = __VSEDITORTRUSTLEVEL.ETL_AlwaysTrusted)]
-    [ProvideEditorLogicalView(typeof(EditorFactory), VSConstants.LOGVIEWID.TextView_string, IsTrusted = true)]
-
-    [ProvideLanguageService(typeof(WixUiLanguageService), WixUiLanguageService.LanguageName, 100, ShowDropDownOptions = true, DefaultToInsertSpaces = true, EnableCommenting = true, AutoOutlining = true, MatchBraces = true, MatchBracesAtCaret = true, ShowMatchingBrace = true, ShowSmartIndent = true)]
-    [ProvideLanguageExtension(typeof(WixUiLanguageService), ".wxs")]
-
-    [ProvideEditorExtension(typeof(EditorFactory), ".wxs", 1000)]
-    [ProvideEditorExtension(typeof(EditorFactory), ".*", 2, NameResourceID = 110)]
-
+    [ProvideEditorLogicalView(typeof(EditorFactory), VSConstants.LOGVIEWID.Designer_string)]
+    [ProvideEditorExtension(typeof(EditorFactory), ".wxs", 32, NameResourceID = 110)]
     public sealed class WixUiDesignerPackage : AsyncPackage
     {
         readonly object sync = new object();
         readonly Logger logger;
+
         Options? options;
+        EditorFactory? editorFactory;
 
         public Options? Options
         {
@@ -60,18 +56,39 @@ namespace WixUiDesigner
 
         public WixUiDesignerPackage()
         {
-            logger = new Logger(this, JoinableTaskFactory);
+            logger = new (this, JoinableTaskFactory);
+        }
+        protected override void Dispose(bool disposing)
+        {
+            try
+            {
+                ThreadHelper.ThrowIfNotOnUIThread();
+                if (disposing)
+                    editorFactory?.Dispose();
+            }
+            finally
+            {
+                base.Dispose(disposing);
+            }
         }
 
         protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
         {
-            RegisterEditorFactory(new EditorFactory(this));
-
+            await base.InitializeAsync(cancellationToken, progress);
             await JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
             Options = (Options)GetDialogPage(typeof(Options));
-            await logger.LogAsync(DebugContext.Package, "Package initialized.", cancellationToken);
-        }
 
+            try
+            {
+                editorFactory = new(logger);
+                RegisterEditorFactory(editorFactory);
+                await logger.LogAsync(DebugContext.Package, "Package initialized.", cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                await logger.LogErrorAsync($"ERROR while initializing package: {ex}", cancellationToken);
+            }
+        }
         void OnOptionChanged(object sender, PropertyChangedEventArgs e) => OnOptionsChanged(e.PropertyName);
         void OnOptionsChanged(string? optionName = null)
         {
