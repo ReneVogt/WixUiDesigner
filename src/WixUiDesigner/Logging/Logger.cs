@@ -16,48 +16,38 @@ using Microsoft.VisualStudio.Threading;
 
 namespace WixUiDesigner.Logging
 {
-    sealed class Logger
+    static class Logger
     {
-        readonly IServiceProvider serviceProvider;
-        readonly JoinableTaskFactory joinableTaskFactory;
+        static IServiceProvider? serviceProvider;
+        static JoinableTaskFactory? joinableTaskFactory;
+        static IVsOutputWindow? window;
+        static IVsOutputWindowPane? pane;
 
-        IVsOutputWindow? window;
-        IVsOutputWindowPane? pane;
-        DebugContext debugContext;
-
-        internal DebugContext DebugContext
-        {
-            get => debugContext;
-            set
-            {
-                if (debugContext == value) return;
-                var oldContext = debugContext;
-                debugContext = value;
-                _ = LogAsync(DebugContext.Package, $"Changed debug context from {oldContext} to {debugContext}.");
-            }
-        }
-
-        internal Logger(IServiceProvider provider, JoinableTaskFactory joinableTaskFactory)
+        internal static void Initialize(IServiceProvider provider, JoinableTaskFactory jtf)
         {
             serviceProvider = provider ?? throw new ArgumentNullException(nameof(provider));
-            this.joinableTaskFactory = joinableTaskFactory ?? throw new ArgumentNullException(nameof(joinableTaskFactory));
+            joinableTaskFactory = jtf ?? throw new ArgumentNullException(nameof(jtf));
         }
+        internal static void Log(DebugContext context, string message) => _ = LogAsync(context, message);
+        internal static void LogError(string message) => _ = LogErrorAsync(message);
 
-        public async Task LogAsync(DebugContext context, string message, CancellationToken cancellationToken = default)
+        internal static async Task LogAsync(DebugContext context, string message, CancellationToken cancellationToken = default)
         {
-            if ((context & DebugContext) == 0) return;
-            await LogAsync(message, false, cancellationToken);
+            if (joinableTaskFactory is null) return;
+            await joinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+            if ((context & WixUiDesignerPackage.Options?.DebugContext) == 0) return;
+            await LogAsync(context.ToString(), message, false, cancellationToken);
         }
-        public async Task LogErrorAsync(string message, CancellationToken cancellationToken = default) =>
-            await LogAsync(message, true, cancellationToken);
+        internal static async Task LogErrorAsync(string message, CancellationToken cancellationToken = default) =>
+            await LogAsync("ERROR", message, true, cancellationToken);
 
-        async Task LogAsync(string message, bool forceVisible, CancellationToken cancellationToken)
+        static async Task LogAsync(string header, string message, bool forceVisible, CancellationToken cancellationToken)
         {
             try
             {
                 if (!(await PaneIsAccessibleAsync(cancellationToken))) return;
-                await joinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
-                pane?.OutputString(DateTime.Now + ": " + message + Environment.NewLine);
+                await joinableTaskFactory!.SwitchToMainThreadAsync(cancellationToken);
+                pane?.OutputString($"{DateTime.Now} [{header}]: {message}{Environment.NewLine}");
                 if (forceVisible) pane?.Activate();
             }
             catch
@@ -67,14 +57,13 @@ namespace WixUiDesigner.Logging
         }
 
         [SuppressMessage("Reliability", "VSSDK006:Check services exist", Justification = "I do!")]
-        async Task<bool> PaneIsAccessibleAsync(CancellationToken cancellationToken = default)
+        static async Task<bool> PaneIsAccessibleAsync(CancellationToken cancellationToken = default)
         {
             if (pane is not null) return true;
-
+            if (joinableTaskFactory is null || serviceProvider is null) return false;
             await joinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
             window ??= (IVsOutputWindow)serviceProvider.GetService(typeof(SVsOutputWindow));
             if (window is null) return false;
-
             var guid = Guid.NewGuid();
             window.CreatePane(ref guid, Defines.ProductName, 1, 1);
             window.GetPane(ref guid, out pane);

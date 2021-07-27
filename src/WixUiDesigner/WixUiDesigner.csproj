@@ -58,11 +58,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Defines.cs" />
-    <Compile Include="Editor\EditorControl.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="Editor\EditorFactory.cs" />
-    <Compile Include="Editor\EditorPane.cs" />
+    <Compile Include="Margin\EditorMargin.cs" />
+    <Compile Include="Margin\EditorMarginFactory.cs" />
     <Compile Include="Logging\DebugContext.cs" />
     <Compile Include="Logging\Logger.cs" />
     <Compile Include="Options.cs">
@@ -86,8 +83,17 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
     <Reference Include="System" />
+    <Reference Include="System.ComponentModel.Composition" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="System.Xml" />
+    <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.VisualStudio.SDK" Version="16.0.206" ExcludeAssets="runtime" />
