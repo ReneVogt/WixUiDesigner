@@ -45,7 +45,7 @@ namespace WixUiDesigner.Logging
         {
             try
             {
-                if (!(await PaneIsAccessibleAsync(cancellationToken))) return;
+                if (!await PaneIsAccessibleAsync(cancellationToken)) return;
                 await joinableTaskFactory!.SwitchToMainThreadAsync(cancellationToken);
                 pane?.OutputString($"{DateTime.Now} [{header}]: {message}{Environment.NewLine}");
                 if (forceVisible) pane?.Activate();

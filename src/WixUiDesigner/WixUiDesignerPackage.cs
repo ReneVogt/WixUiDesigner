@@ -28,7 +28,7 @@ namespace WixUiDesigner
     [ProvideOptionPage(typeof(Options), Defines.ProductName, Defines.ProductName + " Options", 0, 0, true)]
     public sealed class WixUiDesignerPackage : AsyncPackage
     {
-        static readonly object sync = new object();
+        static readonly object sync = new();
 
         static Options? options;
 
@@ -80,12 +80,11 @@ namespace WixUiDesigner
         static void OnOptionChanged(object sender, PropertyChangedEventArgs e)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            OnOptionsChanged(e.PropertyName);
+            OnOptionsChanged();
         }
-        static void OnOptionsChanged(string? optionName = null)
+        static void OnOptionsChanged()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            if (optionName is not null && optionName != nameof(Options.DebugContext)) return;
             Logger.Log(DebugContext.Package, $"Changed options:{Environment.NewLine}{Options}");
         }
 

@@ -58,8 +58,11 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Defines.cs" />
-    <Compile Include="Margin\EditorMargin.cs" />
-    <Compile Include="Margin\EditorMarginFactory.cs" />
+    <Compile Include="Margin\WixUiDesignerLeftMarginFactory.cs" />
+    <Compile Include="Margin\WixUiDesignerBottomMarginFactory.cs" />
+    <Compile Include="Margin\WixUiDesignerRightMarginFactory.cs" />
+    <Compile Include="Margin\WixUiDesignerMargin.cs" />
+    <Compile Include="Margin\WixUiDesignerTopMarginFactory.cs" />
     <Compile Include="Logging\DebugContext.cs" />
     <Compile Include="Logging\Logger.cs" />
     <Compile Include="Options.cs">
