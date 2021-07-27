@@ -30,7 +30,7 @@ namespace WixUiDesigner.Margin
             if (WixUiDesignerPackage.Options?.DesignerPosition != Dock.Right) return null;
 
             Logger.Log(DebugContext.Margin, "Creating right margin.");
-            return new WixUiDesignerMargin(wpfTextViewHost.TextView, false);
+            return new WixUiDesignerMargin(wpfTextViewHost.TextView);
         }
 
     }

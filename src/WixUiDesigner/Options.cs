@@ -19,9 +19,10 @@ namespace WixUiDesigner
     public sealed class Options : DialogPage, INotifyPropertyChanged
     {
         public const int DefaultDesignerSize = 200;
+        public const Dock DefaultDesignerPosition = Dock.Top;
 
         int designersize = DefaultDesignerSize;
-        Dock designerposition = Dock.Top;
+        Dock designerposition = DefaultDesignerPosition;
         public event PropertyChangedEventHandler? PropertyChanged;
         DebugContext debugcontext = DebugContext.None;
 
@@ -43,7 +44,7 @@ namespace WixUiDesigner
         [Category("Layout")]
         [DisplayName("Designer position")]
         [Description("Select where the designer should appear.")]
-        [DefaultValue(Dock.Top)]
+        [DefaultValue(DefaultDesignerPosition)]
         public Dock DesignerPosition
         {
             get => designerposition;

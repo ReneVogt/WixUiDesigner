@@ -16,14 +16,15 @@ using Microsoft.VisualStudio.Text.Editor;
 
 namespace WixUiDesigner.Margin
 {
-    /// <summary>
-    /// Margin's canvas and visual definition including both size and content
-    /// </summary>
-    internal class WixUiDesignerMargin : Canvas, IWpfTextViewMargin
+    internal class WixUiDesignerMargin : DockPanel, IWpfTextViewMargin
     {
-        readonly bool horizontal;
+        readonly Dock position;
+        readonly Canvas canvas;
+        readonly IWpfTextView textView;
 
         bool isDisposed;
+
+        bool Horizontal => position == Dock.Top || position == Dock.Bottom;
 
         public FrameworkElement VisualElement
         {
@@ -50,25 +51,27 @@ namespace WixUiDesigner.Margin
             }
         }
 
-        public WixUiDesignerMargin(IWpfTextView textView, bool horizontal)
+        public WixUiDesignerMargin(IWpfTextView textView)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            this.horizontal = horizontal;
-            if (this.horizontal)
-                Height = WixUiDesignerPackage.Options?.DesignerSize ?? Options.DefaultDesignerSize;
-            else
-                Width = WixUiDesignerPackage.Options?.DesignerSize ?? Options.DefaultDesignerSize;
 
-            ClipToBounds = true;
-            Background = new SolidColorBrush(Colors.LightGreen);
-
-            var label = new Label
+            this.textView = textView ?? throw new ArgumentNullException(nameof(textView));
+            position = WixUiDesignerPackage.Options?.DesignerPosition ?? Options.DefaultDesignerPosition;
+            canvas = new()
             {
-                Background = new SolidColorBrush(Colors.LightGreen),
-                Content = "Hello WixUiDesignerMargin",
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch,
+                ClipToBounds = true
             };
+            canvas.Background = Brushes.Red;
 
-            Children.Add(label);
+            CreateControls();
+        }
+        public void Dispose()
+        {
+            if (isDisposed) return;
+            GC.SuppressFinalize(this);
+            isDisposed = true;
         }
 
         public ITextViewMargin? GetTextViewMargin(string marginName) => marginName switch
@@ -77,14 +80,84 @@ namespace WixUiDesigner.Margin
             _ => null,
         };
 
-        public void Dispose()
+        void CreateControls()
         {
-            if (isDisposed) return;
-            GC.SuppressFinalize(this);
-            isDisposed = true;
+            ThreadHelper.ThrowIfNotOnUIThread();
+
+            var size = WixUiDesignerPackage.Options?.DesignerSize ?? Options.DefaultDesignerSize;
+
+            Grid grid = new();
+            GridSplitter splitter = new ();
+            if (Horizontal)
+            {
+                splitter.Height = 5;
+                splitter.ResizeDirection = GridResizeDirection.Rows;
+                grid.ColumnDefinitions.Add(new());
+            }
+            else
+            {
+                splitter.Width = 5;
+                splitter.ResizeDirection = GridResizeDirection.Columns;
+                grid.RowDefinitions.Add(new());
+            }
+            splitter.VerticalAlignment = VerticalAlignment.Stretch;
+            splitter.HorizontalAlignment = HorizontalAlignment.Stretch;
+
+            grid.Children.Add(canvas);
+
+            switch (position)
+            {
+                case Dock.Top:
+                    grid.RowDefinitions.Add(new() { Height = new(size, GridUnitType.Pixel), MinHeight = 150 });
+                    grid.RowDefinitions.Add(new() { Height = new(5, GridUnitType.Pixel) });
+                    grid.RowDefinitions.Add(new() { Height = new(0, GridUnitType.Star) });
+                    Grid.SetColumn(canvas, 0);
+                    Grid.SetRow(canvas, 0);
+                    break;
+                case Dock.Bottom:
+                    grid.RowDefinitions.Add(new() { Height = new(0, GridUnitType.Star) });
+                    grid.RowDefinitions.Add(new() { Height = new(5, GridUnitType.Pixel) });
+                    grid.RowDefinitions.Add(new() { Height = new(size, GridUnitType.Pixel), MinHeight = 150 });
+                    Grid.SetColumn(canvas, 0);
+                    Grid.SetRow(canvas, 2);
+                    break;
+                case Dock.Left:
+                    grid.ColumnDefinitions.Add(new() { Width = new(size, GridUnitType.Pixel), MinWidth = 150 });
+                    grid.ColumnDefinitions.Add(new() { Width = new(5, GridUnitType.Pixel) });
+                    grid.ColumnDefinitions.Add(new() { Width = new(0, GridUnitType.Star) });
+                    Grid.SetRow(canvas, 0);
+                    Grid.SetColumn(canvas, 0);
+                    break;
+                case Dock.Right:
+                    grid.ColumnDefinitions.Add(new () { Width = new (0, GridUnitType.Star) });
+                    grid.ColumnDefinitions.Add(new () { Width = new (5, GridUnitType.Pixel) });
+                    grid.ColumnDefinitions.Add(new () { Width = new (size, GridUnitType.Pixel), MinWidth = 150 });
+                    Grid.SetRow(canvas, 0);
+                    Grid.SetColumn(canvas, 2);
+                    break;
+            }
+
+            grid.Children.Add(splitter);
+
+            Grid.SetColumn(splitter, Horizontal ? 0 : 1);
+            Grid.SetRow(splitter, Horizontal ? 1 : 0);
+
+            Children.Add(grid);
+            splitter.DragCompleted += SplitterDragCompleted;
+        }
+        void SplitterDragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            if (WixUiDesignerPackage.Options is null) return;
+
+            double size = Horizontal ? canvas.ActualHeight : canvas.ActualWidth;
+            if (double.IsNaN(size)) return;
+
+            WixUiDesignerPackage.Options.DesignerSize = (int)size;
+            WixUiDesignerPackage.Options.SaveSettingsToStorage();
         }
 
-        private void ThrowIfDisposed()
+        void ThrowIfDisposed()
         {
             if (isDisposed)
                 throw new ObjectDisposedException(nameof(WixUiDesignerMargin));

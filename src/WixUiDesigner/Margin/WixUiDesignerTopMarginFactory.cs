@@ -30,7 +30,7 @@ namespace WixUiDesigner.Margin
             if (WixUiDesignerPackage.Options?.DesignerPosition != Dock.Top) return null;
 
             Logger.Log(DebugContext.Margin, "Creating top margin.");
-            return new WixUiDesignerMargin(wpfTextViewHost.TextView, true);
+            return new WixUiDesignerMargin(wpfTextViewHost.TextView);
         }
 
     }
