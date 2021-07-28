@@ -1,5 +1,4 @@
 ﻿/*
- * (C) René Vogt
  *
  * Published under MIT license as described in the LICENSE.md file.
  *
@@ -7,10 +6,8 @@
 
 using System.ComponentModel.Composition;
 using System.Windows.Controls;
-using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Utilities;
-using WixUiDesigner.Logging;
 
 #nullable enable
 
@@ -22,16 +19,10 @@ namespace WixUiDesigner.Margin
     [MarginContainer(PredefinedMarginNames.Bottom)]
     [ContentType("xml")]
     [TextViewRole(PredefinedTextViewRoles.Interactive)]
-    internal sealed class WixUiDesignerBottomMarginFactory : IWpfTextViewMarginProvider
+    internal sealed class WixUiDesignerBottomMarginFactory : WixUiDesignerBaseMarginFactory, IWpfTextViewMarginProvider
     {
-        public IWpfTextViewMargin? CreateMargin(IWpfTextViewHost wpfTextViewHost, IWpfTextViewMargin marginContainer)
-        {
-            ThreadHelper.ThrowIfNotOnUIThread();
-            if (WixUiDesignerPackage.Options?.DesignerPosition != Dock.Bottom) return null;
-
-            Logger.Log(DebugContext.Margin, "Creating bottom margin.");
-            return new WixUiDesignerMargin(wpfTextViewHost.TextView);
-        }
-
+#pragma warning disable VSTHRD010 // thread is synchronized in base method
+        public IWpfTextViewMargin? CreateMargin(IWpfTextViewHost wpfTextViewHost, IWpfTextViewMargin marginContainer) =>
+            CreateMargin(wpfTextViewHost, Dock.Bottom);
     }
 }

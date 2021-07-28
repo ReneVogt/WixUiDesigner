@@ -1,5 +1,4 @@
 ﻿/*
- * (C) René Vogt
  *
  * Published under MIT license as described in the LICENSE.md file.
  *
@@ -18,7 +17,8 @@ namespace WixUiDesigner.Logging
 
         Package = 1 << 0,
         Margin = 1 << 1,
-        WiX = 1 << 2,
+        Document = 1 << 2,
+        WiX = 1 << 3,
 
         All = -1
     }

@@ -1,5 +1,4 @@
 ﻿/*
- * (C) René Vogt
  *
  * Published under MIT license as described in the LICENSE.md file.
  *
@@ -11,6 +10,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text.Editor;
+using WixUiDesigner.Document;
 
 #nullable enable
 
@@ -20,7 +20,7 @@ namespace WixUiDesigner.Margin
     {
         readonly Dock position;
         readonly Canvas canvas;
-        readonly IWpfTextView textView;
+        readonly WixUiDocument document;
 
         bool isDisposed;
 
@@ -51,11 +51,11 @@ namespace WixUiDesigner.Margin
             }
         }
 
-        public WixUiDesignerMargin(IWpfTextView textView)
+        public WixUiDesignerMargin(WixUiDocument document)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
-            this.textView = textView ?? throw new ArgumentNullException(nameof(textView));
+            this.document = document ?? throw new ArgumentNullException(nameof(document));
             position = WixUiDesignerPackage.Options?.DesignerPosition ?? Options.DefaultDesignerPosition;
             canvas = new()
             {
