@@ -19,7 +19,7 @@ namespace WixUiDesigner.Margin
     internal class WixUiDesignerMargin : DockPanel, IWpfTextViewMargin
     {
         readonly Dock position;
-        readonly Canvas canvas;
+        readonly ScrollViewer displayContainer;
         readonly WixUiDocument document;
 
         bool isDisposed;
@@ -57,15 +57,19 @@ namespace WixUiDesigner.Margin
 
             this.document = document ?? throw new ArgumentNullException(nameof(document));
             position = WixUiDesignerPackage.Options?.DesignerPosition ?? Options.DefaultDesignerPosition;
-            canvas = new()
+            displayContainer = new()
             {
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Stretch,
                 ClipToBounds = true
             };
-            canvas.Background = Brushes.Red;
 
             CreateControls();
+            var brush = new LinearGradientBrush(Colors.Green, Colors.Red, new Point(0, 0), new Point(1, 1));
+            var grid = new Grid { Height = 300, Width = 600, Background = brush };
+            displayContainer.Content = grid;
+            displayContainer.HorizontalScrollBarVisibility = displayContainer.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
+
         }
         public void Dispose()
         {
@@ -103,7 +107,7 @@ namespace WixUiDesigner.Margin
             splitter.VerticalAlignment = VerticalAlignment.Stretch;
             splitter.HorizontalAlignment = HorizontalAlignment.Stretch;
 
-            grid.Children.Add(canvas);
+            grid.Children.Add(displayContainer);
 
             switch (position)
             {
@@ -111,29 +115,29 @@ namespace WixUiDesigner.Margin
                     grid.RowDefinitions.Add(new() { Height = new(size, GridUnitType.Pixel), MinHeight = 150 });
                     grid.RowDefinitions.Add(new() { Height = new(5, GridUnitType.Pixel) });
                     grid.RowDefinitions.Add(new() { Height = new(0, GridUnitType.Star) });
-                    Grid.SetColumn(canvas, 0);
-                    Grid.SetRow(canvas, 0);
+                    Grid.SetColumn(displayContainer, 0);
+                    Grid.SetRow(displayContainer, 0);
                     break;
                 case Dock.Bottom:
                     grid.RowDefinitions.Add(new() { Height = new(0, GridUnitType.Star) });
                     grid.RowDefinitions.Add(new() { Height = new(5, GridUnitType.Pixel) });
                     grid.RowDefinitions.Add(new() { Height = new(size, GridUnitType.Pixel), MinHeight = 150 });
-                    Grid.SetColumn(canvas, 0);
-                    Grid.SetRow(canvas, 2);
+                    Grid.SetColumn(displayContainer, 0);
+                    Grid.SetRow(displayContainer, 2);
                     break;
                 case Dock.Left:
                     grid.ColumnDefinitions.Add(new() { Width = new(size, GridUnitType.Pixel), MinWidth = 150 });
                     grid.ColumnDefinitions.Add(new() { Width = new(5, GridUnitType.Pixel) });
                     grid.ColumnDefinitions.Add(new() { Width = new(0, GridUnitType.Star) });
-                    Grid.SetRow(canvas, 0);
-                    Grid.SetColumn(canvas, 0);
+                    Grid.SetRow(displayContainer, 0);
+                    Grid.SetColumn(displayContainer, 0);
                     break;
                 case Dock.Right:
                     grid.ColumnDefinitions.Add(new () { Width = new (0, GridUnitType.Star) });
                     grid.ColumnDefinitions.Add(new () { Width = new (5, GridUnitType.Pixel) });
                     grid.ColumnDefinitions.Add(new () { Width = new (size, GridUnitType.Pixel), MinWidth = 150 });
-                    Grid.SetRow(canvas, 0);
-                    Grid.SetColumn(canvas, 2);
+                    Grid.SetRow(displayContainer, 0);
+                    Grid.SetColumn(displayContainer, 2);
                     break;
             }
 
@@ -150,7 +154,7 @@ namespace WixUiDesigner.Margin
             ThreadHelper.ThrowIfNotOnUIThread();
             if (WixUiDesignerPackage.Options is null) return;
 
-            double size = Horizontal ? canvas.ActualHeight : canvas.ActualWidth;
+            double size = Horizontal ? displayContainer.ActualHeight : displayContainer.ActualWidth;
             if (double.IsNaN(size)) return;
 
             WixUiDesignerPackage.Options.DesignerSize = (int)size;

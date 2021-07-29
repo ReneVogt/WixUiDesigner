@@ -48,7 +48,7 @@ namespace WixUiDesigner.Document
             {
                 var text = wpfTextView.TextBuffer.CurrentSnapshot.GetText();
                 var xml = XDocument.Parse(text);
-                var numberOfDialogs = xml.Root?.XPathSelectElements("/wix:Wix/wix:Fragment/wix:UI/wix:Dialog", WixNamespaceManager).Count() ?? 0;
+                var numberOfDialogs = xml.XPathSelectElements("/wix:Wix/wix:Fragment/wix:UI/wix:Dialog", WixNamespaceManager).Count();
                 if (numberOfDialogs != 1)
                 {
                     Logger.Log(DebugContext.Document, $"Invalid number of dialogs in {document.FilePath}: {numberOfDialogs}.");
