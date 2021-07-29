@@ -5,10 +5,7 @@
  */
 
 using System;
-using System.Linq;
-using System.Xml;
 using System.Xml.Linq;
-using System.Xml.XPath;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using WixUiDesigner.Logging;
@@ -17,23 +14,23 @@ using WixUiDesigner.Logging;
 
 namespace WixUiDesigner.Document
 {
-    sealed class WixUiDocument
+    sealed class WixUiDocument : IDisposable
     {
-        public static XmlNamespaceManager WixNamespaceManager { get; }
+        public event EventHandler? UpdateRequired;
 
         public string FileName { get; }
         public IWpfTextView WpfTextView { get; }
+        public XDocument Xml { get; }
 
-        static WixUiDocument()
-        {
-            WixNamespaceManager = new (new NameTable());
-            WixNamespaceManager.AddNamespace("wix", "http://schemas.microsoft.com/wix/2006/wi");
-        }
-
-        WixUiDocument(string fileName, IWpfTextView wpfTextView)
+        WixUiDocument(string fileName, IWpfTextView wpfTextView, XDocument xml)
         {
             FileName = fileName;
             WpfTextView = wpfTextView;
+            Xml = xml;
+        }
+        public void Dispose()
+        {
+            WpfTextView.Properties.RemoveProperty(typeof(WixUiDocument));
         }
 
         public static WixUiDocument? Get(IWpfTextView wpfTextView)
@@ -48,15 +45,14 @@ namespace WixUiDesigner.Document
             {
                 var text = wpfTextView.TextBuffer.CurrentSnapshot.GetText();
                 var xml = XDocument.Parse(text);
-                var numberOfDialogs = xml.XPathSelectElements("/wix:Wix/wix:Fragment/wix:UI/wix:Dialog", WixNamespaceManager).Count();
-                if (numberOfDialogs != 1)
+                if (!xml.IsWixUiDocument())
                 {
-                    Logger.Log(DebugContext.Document, $"Invalid number of dialogs in {document.FilePath}: {numberOfDialogs}.");
+                    Logger.Log(DebugContext.Document, $"{document.FilePath} is not a valid WiX UI document.");
                     return null;
                 }
 
                 Logger.Log(DebugContext.Document, $"Creating document entry for {document.FilePath}.");
-                return wpfTextView.Properties.GetOrCreateSingletonProperty(() => new WixUiDocument(document.FilePath, wpfTextView));
+                return wpfTextView.Properties.GetOrCreateSingletonProperty(() => new WixUiDocument(document.FilePath, wpfTextView, xml));
             }
             catch (Exception exception)
             {

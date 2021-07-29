@@ -11,6 +11,8 @@ using System.Windows.Media;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text.Editor;
 using WixUiDesigner.Document;
+using WixUiDesigner.Exceptions;
+using WixUiDesigner.Logging;
 
 #nullable enable
 
@@ -61,19 +63,20 @@ namespace WixUiDesigner.Margin
             {
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Stretch,
-                ClipToBounds = true
+                ClipToBounds = true,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto
             };
 
-            CreateControls();
-            var brush = new LinearGradientBrush(Colors.Green, Colors.Red, new Point(0, 0), new Point(1, 1));
-            var grid = new Grid { Height = 300, Width = 600, Background = brush };
-            displayContainer.Content = grid;
-            displayContainer.HorizontalScrollBarVisibility = displayContainer.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
-
+            CreateFramework();
+            UpdateControls();
+            this.document.UpdateRequired += OnUpdateRequired;
         }
         public void Dispose()
         {
             if (isDisposed) return;
+            document.UpdateRequired -= OnUpdateRequired;
+            document.Dispose();
             GC.SuppressFinalize(this);
             isDisposed = true;
         }
@@ -84,7 +87,7 @@ namespace WixUiDesigner.Margin
             _ => null,
         };
 
-        void CreateControls()
+        void CreateFramework()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
@@ -159,6 +162,40 @@ namespace WixUiDesigner.Margin
 
             WixUiDesignerPackage.Options.DesignerSize = (int)size;
             WixUiDesignerPackage.Options.SaveSettingsToStorage();
+        }
+
+        void OnUpdateRequired(object sender, EventArgs e)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            UpdateControls();
+        }
+        void UpdateControls()
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+
+            Logger.Log(DebugContext.WiX, $"Updating controls for {document.FileName}.");
+
+            try
+            {
+
+                var xml = document.Xml;
+                var dialogNode = xml.GetDialogNode();
+                var dialog = displayContainer.Content as Grid;
+
+                if (!(int.TryParse(dialogNode.Attribute("Width")?.Value ?? throw Errors.InvalidDialogSize(), out var width) &&
+                      int.TryParse(dialogNode.Attribute("Height")?.Value ?? throw Errors.InvalidDialogSize(), out var height)))
+                    throw Errors.InvalidDialogSize();
+
+                var brush = new LinearGradientBrush(Colors.Green, Colors.Red, new (0, 0), new Point(1, 1));
+                dialog ??= new (){Background = brush};
+                dialog.Width = width;
+                dialog.Height = height;
+                displayContainer.Content = dialog;
+            }
+            catch (Exception exception)
+            {
+                Logger.LogError($"Failed to render WiX UI document: {exception}");
+            }
         }
 
         void ThrowIfDisposed()
