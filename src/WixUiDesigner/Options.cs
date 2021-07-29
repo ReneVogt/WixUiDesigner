@@ -17,18 +17,22 @@ namespace WixUiDesigner
 {
     public sealed class Options : DialogPage, INotifyPropertyChanged
     {
+        public const DebugContext DefaultDebugContext = DebugContext.None;
         public const int DefaultDesignerSize = 200;
         public const Dock DefaultDesignerPosition = Dock.Top;
+        public const double DefaultUpdateInterval = 0.3d;
 
-        int designersize = DefaultDesignerSize;
+        DebugContext debugcontext = DefaultDebugContext;
         Dock designerposition = DefaultDesignerPosition;
+        int designersize = DefaultDesignerSize;
+        double updateinterval = DefaultUpdateInterval;
+
         public event PropertyChangedEventHandler? PropertyChanged;
-        DebugContext debugcontext = DebugContext.None;
 
         [Category("Logging")]
         [DisplayName("Debug context")]
         [Description("Select the kind of debug messages to be logged.")]
-        [DefaultValue(DebugContext.None)]
+        [DefaultValue(DefaultDebugContext)]
         public DebugContext DebugContext
         {
             get => debugcontext;
@@ -74,9 +78,26 @@ namespace WixUiDesigner
             }
         }
 
+        [Category("Behaviour")]
+        [DisplayName("Update interval")]
+        [Description("The seconds to wait after code changes before updating the design view.")]
+        [DefaultValue(DefaultUpdateInterval)]
+        public double UpdateInterval
+        {
+            get => updateinterval;
+            set
+            {
+                if (value == updateinterval)
+                    return;
+                updateinterval = value;
+                OnPropertyChanged();
+            }
+        }
+
         public override string ToString() => $@"{nameof(DebugContext)}: {DebugContext}
 {nameof(DesignerPosition)}: {DesignerPosition}
-{nameof(DesignerSize)}: {DesignerSize}";
+{nameof(DesignerSize)}: {DesignerSize}
+{nameof(UpdateInterval)}: {UpdateInterval}";
 
         void OnPropertyChanged([CallerMemberName] string caller = "") => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(caller));
     }

@@ -20,6 +20,7 @@ namespace WixUiDesigner.Document
         public event EventHandler? Closed;
 
         bool disposed;
+        
         public string FileName { get; }
         public IWpfTextView WpfTextView { get; }
         public XDocument Xml { get; private set; }
@@ -31,6 +32,7 @@ namespace WixUiDesigner.Document
             Xml = xml;
 
             WpfTextView.TextBuffer.Changed += OnTextChanged;
+            WpfTextView.Caret.PositionChanged += OnCaretPositionChanged;
             WpfTextView.Closed += OnClosed;
         }
         public void Dispose()
@@ -49,6 +51,7 @@ namespace WixUiDesigner.Document
             Xml = XDocument.Parse(WpfTextView.TextBuffer.CurrentSnapshot.GetText());
             UpdateRequired?.Invoke(this, e);
         }
+        void OnCaretPositionChanged(object sender, CaretPositionChangedEventArgs e) => UpdateRequired?.Invoke(this, e);
         void OnClosed(object sender, EventArgs e) => Dispose();
 
 

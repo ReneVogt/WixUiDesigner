@@ -8,6 +8,7 @@ using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text.Editor;
 using WixUiDesigner.Document;
@@ -18,40 +19,21 @@ using WixUiDesigner.Logging;
 
 namespace WixUiDesigner.Margin
 {
-    internal class WixUiDesignerMargin : DockPanel, IWpfTextViewMargin
+    sealed class WixUiDesignerMargin : DockPanel, IWpfTextViewMargin
     {
         readonly Dock position;
         readonly ScrollViewer displayContainer;
         readonly WixUiDocument document;
 
+        readonly DispatcherTimer updateTimer;
+
         bool isDisposed;
 
         bool Horizontal => position == Dock.Top || position == Dock.Bottom;
 
-        public FrameworkElement VisualElement
-        {
-            get
-            {
-                ThrowIfDisposed();
-                return this;
-            }
-        }
-        public double MarginSize
-        {
-            get
-            {
-                ThrowIfDisposed();
-                return ActualHeight;
-            }
-        }
-        public bool Enabled
-        {
-            get
-            {
-                ThrowIfDisposed();
-                return true;
-            }
-        }
+        public FrameworkElement VisualElement => this;
+        public double MarginSize => ActualHeight;
+        public bool Enabled => !isDisposed;
 
         public WixUiDesignerMargin(WixUiDocument document)
         {
@@ -59,6 +41,9 @@ namespace WixUiDesigner.Margin
 
             this.document = document ?? throw new ArgumentNullException(nameof(document));
             position = WixUiDesignerPackage.Options?.DesignerPosition ?? Options.DefaultDesignerPosition;
+            updateTimer = new (){Interval = TimeSpan.FromSeconds(WixUiDesignerPackage.Options?.UpdateInterval ?? Options.DefaultUpdateInterval)};
+            updateTimer.Tick += OnUpdateTimerTicked;
+
             displayContainer = new()
             {
                 HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -76,12 +61,13 @@ namespace WixUiDesigner.Margin
         public void Dispose()
         {
             if (isDisposed) return;
+            isDisposed = true;
             Logger.Log(DebugContext.WiX, $"Closing margin for {document.FileName}.");
+            updateTimer.Tick -= OnUpdateTimerTicked;
+            updateTimer.Stop();
             document.UpdateRequired -= OnUpdateRequired;
             document.Closed -= OnClosed;
             document.Dispose();
-            GC.SuppressFinalize(this);
-            isDisposed = true;
         }
 
         public ITextViewMargin? GetTextViewMargin(string marginName) => marginName switch
@@ -90,6 +76,34 @@ namespace WixUiDesigner.Margin
             _ => null,
         };
 
+        void OnUpdateTimerTicked(object sender, EventArgs e)
+        {
+            updateTimer.Stop();
+            ThreadHelper.ThrowIfNotOnUIThread();
+            UpdateControls();
+        }
+        void OnUpdateRequired(object sender, EventArgs e)
+        {
+            if (isDisposed) return;
+            ThreadHelper.ThrowIfNotOnUIThread();
+            updateTimer.Stop();
+            updateTimer.Start();
+        }
+        void OnSplitterDragged(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
+        {
+            if (isDisposed) return;
+
+            ThreadHelper.ThrowIfNotOnUIThread();
+            if (WixUiDesignerPackage.Options is null) return;
+
+            double size = Horizontal ? displayContainer.ActualHeight : displayContainer.ActualWidth;
+            if (double.IsNaN(size)) return;
+
+            WixUiDesignerPackage.Options.DesignerSize = (int)size;
+            WixUiDesignerPackage.Options.SaveSettingsToStorage();
+        }
+        void OnClosed(object sender, EventArgs e) => Dispose();
+
         void CreateFramework()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
@@ -97,7 +111,7 @@ namespace WixUiDesigner.Margin
             var size = WixUiDesignerPackage.Options?.DesignerSize ?? Options.DefaultDesignerSize;
 
             Grid grid = new();
-            GridSplitter splitter = new ();
+            GridSplitter splitter = new();
             if (Horizontal)
             {
                 splitter.Height = 5;
@@ -139,9 +153,9 @@ namespace WixUiDesigner.Margin
                     Grid.SetColumn(displayContainer, 0);
                     break;
                 case Dock.Right:
-                    grid.ColumnDefinitions.Add(new () { Width = new (0, GridUnitType.Star) });
-                    grid.ColumnDefinitions.Add(new () { Width = new (5, GridUnitType.Pixel) });
-                    grid.ColumnDefinitions.Add(new () { Width = new (size, GridUnitType.Pixel), MinWidth = 150 });
+                    grid.ColumnDefinitions.Add(new() { Width = new(0, GridUnitType.Star) });
+                    grid.ColumnDefinitions.Add(new() { Width = new(5, GridUnitType.Pixel) });
+                    grid.ColumnDefinitions.Add(new() { Width = new(size, GridUnitType.Pixel), MinWidth = 150 });
                     Grid.SetRow(displayContainer, 0);
                     Grid.SetColumn(displayContainer, 2);
                     break;
@@ -153,29 +167,11 @@ namespace WixUiDesigner.Margin
             Grid.SetRow(splitter, Horizontal ? 1 : 0);
 
             Children.Add(grid);
-            splitter.DragCompleted += SplitterDragCompleted;
+            splitter.DragCompleted += OnSplitterDragged;
         }
-        void SplitterDragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
-        {
-            ThreadHelper.ThrowIfNotOnUIThread();
-            if (WixUiDesignerPackage.Options is null) return;
-
-            double size = Horizontal ? displayContainer.ActualHeight : displayContainer.ActualWidth;
-            if (double.IsNaN(size)) return;
-
-            WixUiDesignerPackage.Options.DesignerSize = (int)size;
-            WixUiDesignerPackage.Options.SaveSettingsToStorage();
-        }
-
-        void OnUpdateRequired(object sender, EventArgs e)
-        {
-            ThreadHelper.ThrowIfNotOnUIThread();
-            UpdateControls();
-        }
-        void OnClosed(object sender, EventArgs e) => Dispose();
-        
         void UpdateControls()
         {
+            if (isDisposed) return;
             ThreadHelper.ThrowIfNotOnUIThread();
 
             Logger.Log(DebugContext.WiX, $"Updating controls for {document.FileName}.");
@@ -201,12 +197,6 @@ namespace WixUiDesigner.Margin
             {
                 Logger.LogError($"Failed to render WiX UI document: {exception}");
             }
-        }
-
-        void ThrowIfDisposed()
-        {
-            if (isDisposed)
-                throw new ObjectDisposedException(nameof(WixUiDesignerMargin));
         }
     }
 }
