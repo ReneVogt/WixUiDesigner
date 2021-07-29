@@ -178,7 +178,6 @@ namespace WixUiDesigner.Margin
 
             try
             {
-
                 var xml = document.Xml;
                 var dialogNode = xml.GetDialogNode();
                 var dialog = displayContainer.Content as Grid;
@@ -192,6 +191,12 @@ namespace WixUiDesigner.Margin
                 dialog.Width = width;
                 dialog.Height = height;
                 displayContainer.Content = dialog;
+
+                var bufferPosition = document.WpfTextView.Caret.Position.BufferPosition;
+                var containingLine = bufferPosition.GetContainingLine();
+                int column = containingLine.Start.Difference(bufferPosition) + 1;
+                int line = containingLine.LineNumber + 1;
+                Logger.Log(DebugContext.Margin, $"Selected control: {xml.GetControlAt(line, column)?.Attribute("Id")?.Value ?? "<null>"}");
             }
             catch (Exception exception)
             {

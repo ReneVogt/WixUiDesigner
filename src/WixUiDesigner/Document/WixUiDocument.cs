@@ -48,13 +48,11 @@ namespace WixUiDesigner.Document
 
         void OnTextChanged(object sender, EventArgs e)
         {
-            Xml = XDocument.Parse(WpfTextView.TextBuffer.CurrentSnapshot.GetText());
+            Xml = WixParser.Load(WpfTextView.TextBuffer.CurrentSnapshot.GetText());
             UpdateRequired?.Invoke(this, e);
         }
         void OnCaretPositionChanged(object sender, CaretPositionChangedEventArgs e) => UpdateRequired?.Invoke(this, e);
         void OnClosed(object sender, EventArgs e) => Dispose();
-
-
 
         public static WixUiDocument? Get(IWpfTextView wpfTextView)
         {
@@ -66,8 +64,7 @@ namespace WixUiDesigner.Document
 
             try
             {
-                var text = wpfTextView.TextBuffer.CurrentSnapshot.GetText();
-                var xml = XDocument.Parse(text);
+                var xml = WixParser.Load(wpfTextView.TextBuffer.CurrentSnapshot.GetText());
                 if (!xml.IsWixUiDocument())
                 {
                     Logger.Log(DebugContext.Document, $"{document.FilePath} is not a valid WiX UI document.");
