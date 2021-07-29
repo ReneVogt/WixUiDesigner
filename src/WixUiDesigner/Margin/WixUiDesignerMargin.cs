@@ -71,11 +71,14 @@ namespace WixUiDesigner.Margin
             CreateFramework();
             UpdateControls();
             this.document.UpdateRequired += OnUpdateRequired;
+            this.document.Closed += OnClosed;
         }
         public void Dispose()
         {
             if (isDisposed) return;
+            Logger.Log(DebugContext.WiX, $"Closing margin for {document.FileName}.");
             document.UpdateRequired -= OnUpdateRequired;
+            document.Closed -= OnClosed;
             document.Dispose();
             GC.SuppressFinalize(this);
             isDisposed = true;
@@ -169,6 +172,8 @@ namespace WixUiDesigner.Margin
             ThreadHelper.ThrowIfNotOnUIThread();
             UpdateControls();
         }
+        void OnClosed(object sender, EventArgs e) => Dispose();
+        
         void UpdateControls()
         {
             ThreadHelper.ThrowIfNotOnUIThread();

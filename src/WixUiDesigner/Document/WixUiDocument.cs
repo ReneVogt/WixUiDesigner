@@ -17,21 +17,41 @@ namespace WixUiDesigner.Document
     sealed class WixUiDocument : IDisposable
     {
         public event EventHandler? UpdateRequired;
+        public event EventHandler? Closed;
 
+        bool disposed;
         public string FileName { get; }
         public IWpfTextView WpfTextView { get; }
-        public XDocument Xml { get; }
+        public XDocument Xml { get; private set; }
 
         WixUiDocument(string fileName, IWpfTextView wpfTextView, XDocument xml)
         {
             FileName = fileName;
             WpfTextView = wpfTextView;
             Xml = xml;
+
+            WpfTextView.TextBuffer.Changed += OnTextChanged;
+            WpfTextView.Closed += OnClosed;
         }
         public void Dispose()
         {
+            if (disposed) return;
+            Logger.Log(DebugContext.WiX, $"Closing document {FileName}.");
+            disposed = true;
+            Closed?.Invoke(this, EventArgs.Empty);
+            WpfTextView.TextBuffer.Changed -= OnTextChanged;
+            WpfTextView.Closed -= OnClosed;
             WpfTextView.Properties.RemoveProperty(typeof(WixUiDocument));
         }
+
+        void OnTextChanged(object sender, EventArgs e)
+        {
+            Xml = XDocument.Parse(WpfTextView.TextBuffer.CurrentSnapshot.GetText());
+            UpdateRequired?.Invoke(this, e);
+        }
+        void OnClosed(object sender, EventArgs e) => Dispose();
+
+
 
         public static WixUiDocument? Get(IWpfTextView wpfTextView)
         {
