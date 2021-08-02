@@ -45,5 +45,9 @@ namespace WixUiDesigner.Document
             xml.XPathSelectElements(
                 "/wix:Wix/wix:Fragment/wix:UI/wix:Dialog//wix:Control|/wix:Wix/wix:Fragment/wix:UI/wix:Dialog//wix:Control/wix:RadioButtonGroup|/wix:Wix/wix:Fragment/wix:UI/wix:Dialog//wix:Control/wix:RadioButtonGroup/wix:RadioButton",
                 WixNamespaceManager);
+        public static IEnumerable<XElement> GetControlNodes(this XElement parentNode) =>
+            parentNode.XPathSelectElements(
+                "wix:Control",
+                WixNamespaceManager);
     }
 }

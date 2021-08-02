@@ -7,8 +7,8 @@
 using System;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 using System.Windows.Threading;
+using System.Xml.Linq;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text.Editor;
 using WixUiDesigner.Document;
@@ -174,20 +174,18 @@ namespace WixUiDesigner.Margin
             if (isDisposed) return;
             ThreadHelper.ThrowIfNotOnUIThread();
 
-            Logger.Log(DebugContext.WiX, $"Updating controls for {document.FileName}.");
+            Logger.Log(DebugContext.WiX | DebugContext.Margin, $"Updating controls for {document.FileName}.");
 
             try
             {
                 var xml = document.Xml;
                 var dialogNode = xml.GetDialogNode();
-                var dialog = displayContainer.Content as Grid;
 
                 if (!(int.TryParse(dialogNode.Attribute("Width")?.Value ?? throw Errors.InvalidDialogSize(), out var width) &&
                       int.TryParse(dialogNode.Attribute("Height")?.Value ?? throw Errors.InvalidDialogSize(), out var height)))
                     throw Errors.InvalidDialogSize();
 
-                var brush = new LinearGradientBrush(Colors.Green, Colors.Red, new (0, 0), new Point(1, 1));
-                dialog ??= new (){Background = brush};
+                var dialog = new Canvas(){Background = SystemColors.ControlBrush};
                 dialog.Width = width;
                 dialog.Height = height;
                 displayContainer.Content = dialog;
@@ -196,12 +194,41 @@ namespace WixUiDesigner.Margin
                 var containingLine = bufferPosition.GetContainingLine();
                 int column = containingLine.Start.Difference(bufferPosition) + 1;
                 int line = containingLine.LineNumber + 1;
-                Logger.Log(DebugContext.Margin, $"Selected control: {xml.GetControlAt(line, column)?.Attribute("Id")?.Value ?? "<null>"}");
+                var selectedElement = xml.GetControlAt(line, column);
+                Logger.Log(DebugContext.Margin, $"Selected control: {selectedElement?.Attribute("Id")?.Value ?? "<null>"}");
+
+                foreach (var controlNode in dialogNode.GetControlNodes())
+                {
+                    switch (controlNode.Attribute("Type")?.Value)
+                    {
+                        case "Edit": break;
+                        case "Text":
+                            Logger.Log(DebugContext.WiX | DebugContext.Margin, $"Adding label {controlNode.Attribute("Id")?.Value ?? "<nulL>"}.");
+                            var label = new Label {Content = controlNode.Attribute("Text")?.Value};
+                            dialog.Children.Add(label);
+                            SetLocationAndSize(label, controlNode);
+                            break;
+                        case "Line": break;
+                        case "PushButton": break;
+                        case "CheckBox": break;
+                    }
+                }
             }
             catch (Exception exception)
             {
                 Logger.LogError($"Failed to render WiX UI document: {exception}");
             }
+        }
+        void SetLocationAndSize(Control child, XElement node)
+        {
+            if (double.TryParse(node.Attribute("X")?.Value ?? string.Empty, out var x))
+                Canvas.SetLeft(child, x);
+            if (double.TryParse(node.Attribute("Y")?.Value ?? string.Empty, out var y))
+                Canvas.SetTop(child, y);
+            if (double.TryParse(node.Attribute("Width")?.Value ?? string.Empty, out var w))
+                child.Width = w;
+            if (double.TryParse(node.Attribute("Height")?.Value ?? string.Empty, out var h))
+                child.Height = h;
         }
     }
 }
