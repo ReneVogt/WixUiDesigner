@@ -121,6 +121,6 @@
     <value>WiX UI Designer</value>
   </data>
   <data name="112" xml:space="preserve">
-    <value>A designer for WiX UI fragments.</value>
+    <value>A designer for WiX UI dialogs.</value>
   </data>
 </root>

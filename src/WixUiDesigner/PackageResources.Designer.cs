@@ -70,7 +70,7 @@ namespace WixUiDesigner {
         }
         
         /// <summary>
-        ///   Sucht eine lokalisierte Zeichenfolge, die A designer for WiX UI fragments. ähnelt.
+        ///   Sucht eine lokalisierte Zeichenfolge, die A designer for WiX UI dialogs. ähnelt.
         /// </summary>
         internal static string _112 {
             get {

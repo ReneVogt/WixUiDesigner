@@ -5,8 +5,10 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Threading;
 using System.Xml.Linq;
 using Microsoft.VisualStudio.Shell;
@@ -23,8 +25,8 @@ namespace WixUiDesigner.Margin
     {
         readonly Dock position;
         readonly ScrollViewer displayContainer;
+        readonly Grid dialog;
         readonly WixUiDocument document;
-
         readonly DispatcherTimer updateTimer;
 
         bool isDisposed;
@@ -41,16 +43,19 @@ namespace WixUiDesigner.Margin
 
             this.document = document ?? throw new ArgumentNullException(nameof(document));
             position = WixUiDesignerPackage.Options?.DesignerPosition ?? Options.DefaultDesignerPosition;
+
             updateTimer = new (){Interval = TimeSpan.FromSeconds(WixUiDesignerPackage.Options?.UpdateInterval ?? Options.DefaultUpdateInterval)};
             updateTimer.Tick += OnUpdateTimerTicked;
 
+            dialog = new() {Background = SystemColors.ControlBrush, Margin = new(20)};
             displayContainer = new()
             {
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Stretch,
                 ClipToBounds = true,
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Content = dialog
             };
 
             CreateFramework();
@@ -185,10 +190,8 @@ namespace WixUiDesigner.Margin
                       int.TryParse(dialogNode.Attribute("Height")?.Value ?? throw Errors.InvalidDialogSize(), out var height)))
                     throw Errors.InvalidDialogSize();
 
-                var dialog = new Canvas(){Background = SystemColors.ControlBrush};
                 dialog.Width = width;
                 dialog.Height = height;
-                displayContainer.Content = dialog;
 
                 var bufferPosition = document.WpfTextView.Caret.Position.BufferPosition;
                 var containingLine = bufferPosition.GetContainingLine();
@@ -197,6 +200,10 @@ namespace WixUiDesigner.Margin
                 var selectedElement = xml.GetControlAt(line, column);
                 Logger.Log(DebugContext.Margin, $"Selected control: {selectedElement?.Attribute("Id")?.Value ?? "<null>"}");
 
+                Control? selectedControl = null;
+
+                List<Control> controls = new();
+
                 foreach (var controlNode in dialogNode.GetControlNodes())
                 {
                     switch (controlNode.Attribute("Type")?.Value)
@@ -204,31 +211,51 @@ namespace WixUiDesigner.Margin
                         case "Edit": break;
                         case "Text":
                             Logger.Log(DebugContext.WiX | DebugContext.Margin, $"Adding label {controlNode.Attribute("Id")?.Value ?? "<nulL>"}.");
-                            var label = new Label {Content = controlNode.Attribute("Text")?.Value};
-                            dialog.Children.Add(label);
-                            SetLocationAndSize(label, controlNode);
+                            var label = new Label
+                            {
+                                Content = controlNode.Attribute("Text")?.Value,
+                            };
+                            controls.Add(label);
+                            LayoutControl(label, controlNode);
+                            if (controlNode == selectedElement)
+                                selectedControl = label;
                             break;
                         case "Line": break;
                         case "PushButton": break;
                         case "CheckBox": break;
                     }
                 }
+
+                dialog.Children.Clear();
+                controls.ForEach(c => dialog.Children.Add(c));
+
+                if (selectedControl is null) return;
+                var adornerLayer = AdornerLayer.GetAdornerLayer(selectedControl);
+                if (adornerLayer is null) return;
+                adornerLayer.Add(new SelectedElementAdorner(selectedControl));
             }
             catch (Exception exception)
             {
                 Logger.LogError($"Failed to render WiX UI document: {exception}");
             }
         }
-        void SetLocationAndSize(Control child, XElement node)
+        static void LayoutControl(Control control, XElement node)
         {
+            control.HorizontalAlignment = HorizontalAlignment.Left;
+            control.VerticalAlignment = VerticalAlignment.Top;
+
+            var margin = control.Margin;
+            
             if (double.TryParse(node.Attribute("X")?.Value ?? string.Empty, out var x))
-                Canvas.SetLeft(child, x);
+                margin.Left = x;
             if (double.TryParse(node.Attribute("Y")?.Value ?? string.Empty, out var y))
-                Canvas.SetTop(child, y);
+                margin.Top = y;
             if (double.TryParse(node.Attribute("Width")?.Value ?? string.Empty, out var w))
-                child.Width = w;
+                control.Width = w;
             if (double.TryParse(node.Attribute("Height")?.Value ?? string.Empty, out var h))
-                child.Height = h;
+                control.Height = h;
+
+            control.Margin = margin;
         }
     }
 }
