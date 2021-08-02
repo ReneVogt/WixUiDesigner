@@ -10,6 +10,6 @@ namespace WixUiDesigner.Exceptions
 {
     static class Errors
     {
-        public static WixException InvalidDialogSize() => new WixException("The dialog node has invalid size attributes.");
+        public static WixException InvalidDialogSize() => new("The dialog node has invalid size attributes.");
     }
 }
