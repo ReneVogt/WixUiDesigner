@@ -5,6 +5,7 @@
  */
 
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Xml;
@@ -23,8 +24,6 @@ namespace WixUiDesigner.Document
             WixNamespaceManager = new(new NameTable());
             WixNamespaceManager.AddNamespace("wix", "http://schemas.microsoft.com/wix/2006/wi");
         }
-
-        public static double DefaultFontSize { get; } = 12;
 
         public static XDocument Load(string xml)
         {
@@ -51,5 +50,14 @@ namespace WixUiDesigner.Document
             parentNode.XPathSelectElements(
                 "wix:Control",
                 WixNamespaceManager);
+
+        public static string? EvaluateAttribute(this XElement? element, string attributeName) =>
+            EvaluateText(element?.Attribute(attributeName)?.Value);
+        public static double EvaluateDoubleAttribute(this XElement? element, string attributeName, double defaultValue = default) =>
+            double.TryParse(element.EvaluateAttribute(attributeName) ?? string.Empty,
+                            NumberStyles.Any, CultureInfo.InstalledUICulture, out var d)
+                ? d
+                : defaultValue;
+        public static string? EvaluateText(string? value) => value;
     }
 }

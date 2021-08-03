@@ -48,7 +48,6 @@ namespace WixUiDesigner.Margin
             updateTimer.Tick += OnUpdateTimerTicked;
 
             dialog = new() {Background = SystemColors.ControlBrush, Margin = new(20)};
-            //TextElement.SetFontSize(dialog, WixParser.DefaultFontSize);
             displayContainer = new()
             {
                 HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -209,7 +208,6 @@ namespace WixUiDesigner.Margin
             var controlsToAdd = usedControls.Where(control => !parentControl.Children.Contains(control)).ToList();
             controlsToAdd.ForEach(control => parentControl.Children.Add(control!));
         }
-
         static Control? UpdateControl(Grid parentControl, XElement node, XElement? selectedElement) => node.Attribute("Type")?.Value switch
         {
             "Text" => UpdateTextControl(parentControl, node, selectedElement),
@@ -228,7 +226,7 @@ namespace WixUiDesigner.Margin
             var label = parentControl.Children.OfType<Label>().FirstOrDefault(l => l.Name == id) ?? new Label
             {
                 Name = id,
-                Content = node.Attribute("Text")?.Value,
+                Content = node.EvaluateAttribute("Text"),
                 Padding = default,
                 Margin = default
             };
@@ -247,17 +245,11 @@ namespace WixUiDesigner.Margin
             control.VerticalAlignment = VerticalAlignment.Top;
 
             var margin = control.Margin;
-            
-            if (double.TryParse(node.Attribute("X")?.Value ?? string.Empty, out var x))
-                margin.Left = x;
-            if (double.TryParse(node.Attribute("Y")?.Value ?? string.Empty, out var y))
-                margin.Top = y;
-            if (double.TryParse(node.Attribute("Width")?.Value ?? string.Empty, out var w))
-                control.Width = w;
-            if (double.TryParse(node.Attribute("Height")?.Value ?? string.Empty, out var h))
-                control.Height = h;
-
+            margin.Left = node.EvaluateDoubleAttribute("X", margin.Left);
+            margin.Top = node.EvaluateDoubleAttribute("Y", margin.Top);
             control.Margin = margin;
+            control.Width = node.EvaluateDoubleAttribute("Width", control.Width);
+            control.Height = node.EvaluateDoubleAttribute("Height", control.Height);
         }
         static void CheckAdornment(Control control, XElement node, XElement? selectedElement)
         {
