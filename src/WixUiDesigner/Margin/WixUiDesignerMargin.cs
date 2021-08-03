@@ -94,26 +94,13 @@ namespace WixUiDesigner.Margin
             updateTimer.Stop();
             updateTimer.Start();
         }
-        void OnSplitterDragged(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
-        {
-            if (isDisposed) return;
-
-            ThreadHelper.ThrowIfNotOnUIThread();
-            if (WixUiDesignerPackage.Options is null) return;
-
-            double size = Horizontal ? displayContainer.ActualHeight : displayContainer.ActualWidth;
-            if (double.IsNaN(size)) return;
-
-            WixUiDesignerPackage.Options.DesignerSize = (int)size;
-            WixUiDesignerPackage.Options.SaveSettingsToStorage();
-        }
         void OnClosed(object sender, EventArgs e) => Dispose();
 
         void CreateFramework()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
-            var size = WixUiDesignerPackage.Options?.DesignerSize ?? Options.DefaultDesignerSize;
+            var size = 0.5 * (Horizontal ? document.WpfTextView.ViewportHeight : document.WpfTextView.ViewportWidth);
 
             Grid grid = new();
             GridSplitter splitter = new();
@@ -172,7 +159,7 @@ namespace WixUiDesigner.Margin
             Grid.SetRow(splitter, Horizontal ? 1 : 0);
 
             Children.Add(grid);
-            splitter.DragCompleted += OnSplitterDragged;
+            //splitter.DragCompleted += OnSplitterDragged;
         }
         void UpdateControls()
         {

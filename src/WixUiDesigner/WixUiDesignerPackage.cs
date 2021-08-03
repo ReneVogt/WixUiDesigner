@@ -22,9 +22,7 @@ namespace WixUiDesigner
     [Guid(Defines.PackageGuidString)]
     [InstalledProductRegistration("#110", "#112", "0.1.0.0")]
     [ProvideMenuResource("Menus.ctmenu", 1)]
-
-//    [ProvideAutoLoad(UIContextGuids.NoSolution, PackageAutoLoadFlags.BackgroundLoad)]
-    [ProvideOptionPage(typeof(Options), Defines.ProductName, Defines.ProductName + " Options", 0, 0, true)]
+    [ProvideOptionPage(typeof(Options), Defines.ProductName, "General", 0, 0, true)]
     public sealed class WixUiDesignerPackage : AsyncPackage
     {
         static readonly object sync = new();
