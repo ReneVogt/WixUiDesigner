@@ -48,7 +48,7 @@ namespace WixUiDesigner.Margin
             updateTimer.Tick += OnUpdateTimerTicked;
 
             dialog = new() {Background = SystemColors.ControlBrush, Margin = new(20)};
-            TextElement.SetFontSize(dialog, WixParser.DefaultFontSize);
+            //TextElement.SetFontSize(dialog, WixParser.DefaultFontSize);
             displayContainer = new()
             {
                 HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -224,11 +224,13 @@ namespace WixUiDesigner.Margin
                 return null;
             }
 
-            Logger.Log(DebugContext.WiX | DebugContext.Margin, $"Updating label {id}.");
+            Logger.Log(DebugContext.WiX | DebugContext.Margin, $"Updating text control {id}.");
             var label = parentControl.Children.OfType<Label>().FirstOrDefault(l => l.Name == id) ?? new Label
             {
                 Name = id,
-                Content = node.Attribute("Text")?.Value
+                Content = node.Attribute("Text")?.Value,
+                Padding = default,
+                Margin = default
             };
             LayoutControl(label, node);
             CheckAdornment(label, node, selectedElement);
