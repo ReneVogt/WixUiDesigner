@@ -15,7 +15,7 @@ namespace WixUiDesigner.Margin
 {
     sealed class SelectedElementAdorner : Adorner
     {
-        readonly Pen pen = new Pen(SystemColors.HighlightBrush, 1);
+        readonly Pen pen = new (SystemColors.HighlightBrush, 1);
         public SelectedElementAdorner(UIElement adornedElement)
             : base(adornedElement) { }
 

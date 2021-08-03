@@ -23,7 +23,9 @@ namespace WixUiDesigner.Document
             WixNamespaceManager = new(new NameTable());
             WixNamespaceManager.AddNamespace("wix", "http://schemas.microsoft.com/wix/2006/wi");
         }
-        
+
+        public static double DefaultFontSize { get; } = 12;
+
         public static XDocument Load(string xml)
         {
             using var textReader = new StringReader(xml);

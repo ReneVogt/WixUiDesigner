@@ -5,7 +5,7 @@
  */
 
 using System;
-using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -48,6 +48,7 @@ namespace WixUiDesigner.Margin
             updateTimer.Tick += OnUpdateTimerTicked;
 
             dialog = new() {Background = SystemColors.ControlBrush, Margin = new(20)};
+            TextElement.SetFontSize(dialog, WixParser.DefaultFontSize);
             displayContainer = new()
             {
                 HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -187,44 +188,56 @@ namespace WixUiDesigner.Margin
                 var selectedElement = xml.GetControlAt(line, column);
                 Logger.Log(DebugContext.Margin, $"Selected control: {selectedElement?.Attribute("Id")?.Value ?? "<null>"}");
 
-                Control? selectedControl = null;
-
-                List<Control> controls = new();
-
-                foreach (var controlNode in dialogNode.GetControlNodes())
-                {
-                    switch (controlNode.Attribute("Type")?.Value)
-                    {
-                        case "Edit": break;
-                        case "Text":
-                            Logger.Log(DebugContext.WiX | DebugContext.Margin, $"Adding label {controlNode.Attribute("Id")?.Value ?? "<nulL>"}.");
-                            var label = new Label
-                            {
-                                Content = controlNode.Attribute("Text")?.Value,
-                            };
-                            controls.Add(label);
-                            LayoutControl(label, controlNode);
-                            if (controlNode == selectedElement)
-                                selectedControl = label;
-                            break;
-                        case "Line": break;
-                        case "PushButton": break;
-                        case "CheckBox": break;
-                    }
-                }
-
-                dialog.Children.Clear();
-                controls.ForEach(c => dialog.Children.Add(c));
-
-                if (selectedControl is null) return;
-                var adornerLayer = AdornerLayer.GetAdornerLayer(selectedControl);
-                if (adornerLayer is null) return;
-                adornerLayer.Add(new SelectedElementAdorner(selectedControl));
+                UpdateControls(dialog, dialogNode, selectedElement);
             }
             catch (Exception exception)
             {
                 Logger.LogError($"Failed to render WiX UI document: {exception}");
             }
+        }
+        static void UpdateControls(Grid parentControl, XElement parentNode, XElement? selectedElement)
+        {
+            var usedControls = parentNode.GetControlNodes()
+                                         .Select(node => UpdateControl(parentControl, node, selectedElement))
+                                         .Where(control => control is not null)
+                                         .ToList();
+            var controlsToRemove = parentControl.Children.Cast<Control>()
+                                                .Where(control => !usedControls.Contains(control))
+                                                .ToList();
+            controlsToRemove.ForEach(control => parentControl.Children.Remove(control));
+
+            var controlsToAdd = usedControls.Where(control => !parentControl.Children.Contains(control)).ToList();
+            controlsToAdd.ForEach(control => parentControl.Children.Add(control!));
+        }
+
+        static Control? UpdateControl(Grid parentControl, XElement node, XElement? selectedElement) => node.Attribute("Type")?.Value switch
+        {
+            "Text" => UpdateTextControl(parentControl, node, selectedElement),
+            _ => HandleUnknownControlType(node)
+        };
+        static Control? UpdateTextControl(Grid parentControl, XElement node, XElement? selectedElement)
+        {
+            var id = node.Attribute("Id")?.Value;
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                Logger.Log(DebugContext.Margin | DebugContext.WiX, "Found label without id!");
+                return null;
+            }
+
+            Logger.Log(DebugContext.WiX | DebugContext.Margin, $"Updating label {id}.");
+            var label = parentControl.Children.OfType<Label>().FirstOrDefault(l => l.Name == id) ?? new Label
+            {
+                Name = id,
+                Content = node.Attribute("Text")?.Value
+            };
+            LayoutControl(label, node);
+            CheckAdornment(label, node, selectedElement);
+            return label;
+        }
+        static Control? HandleUnknownControlType(XElement node)
+        {
+            Logger.Log(DebugContext.Margin | DebugContext.WiX, $"control [{node.Attribute("Id")?.Value}] has unknown type [{node.Attribute("Type")?.Value}]!");
+            return null;
         }
         static void LayoutControl(Control control, XElement node)
         {
@@ -243,6 +256,16 @@ namespace WixUiDesigner.Margin
                 control.Height = h;
 
             control.Margin = margin;
+        }
+        static void CheckAdornment(Control control, XElement node, XElement? selectedElement)
+        {
+            var layer = AdornerLayer.GetAdornerLayer(control);
+            if (layer is null) return;
+            var adorner = layer.GetAdorners(control)?.OfType<SelectedElementAdorner>().SingleOrDefault();
+            if (node == selectedElement && adorner is null)
+                layer.Add(new SelectedElementAdorner(control));
+            if (node != selectedElement && adorner is not null)
+                layer.Remove(adorner);
         }
     }
 }
