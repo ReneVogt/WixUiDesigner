@@ -405,6 +405,9 @@ namespace WixUiDesigner.Margin
             control.Margin = margin;
             control.Width = node.EvaluateDoubleAttribute("Width", control.Width);
             control.Height = node.EvaluateDoubleAttribute("Height", control.Height);
+
+            control.IsEnabled = node.IsEnabledControl();
+            control.Visibility = node.GetControlVisibility();
         }
         static void CheckAdornment(Control control, XElement node, XElement? selectedElement)
         {

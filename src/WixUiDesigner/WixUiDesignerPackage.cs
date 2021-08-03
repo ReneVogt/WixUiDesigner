@@ -8,9 +8,11 @@ using System;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Threading;
+using EnvDTE;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
+using WixUiDesigner.Document;
 using WixUiDesigner.Logging;
 using Task = System.Threading.Tasks.Task;
 
@@ -67,6 +69,7 @@ namespace WixUiDesigner
 
             try
             {
+                await WixParser.InitializeAsync(this, JoinableTaskFactory, cancellationToken);
                 await Logger.LogAsync(DebugContext.Package, "Package initialized.", cancellationToken);
             }
             catch (Exception ex)

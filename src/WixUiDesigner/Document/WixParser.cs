@@ -4,13 +4,20 @@
  *
  */
 
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.XPath;
+using EnvDTE;
+using Microsoft.VisualStudio.Debugger.Symbols;
+using Microsoft.VisualStudio.Threading;
 
 #nullable enable
 
@@ -18,11 +25,23 @@ namespace WixUiDesigner.Document
 {
     static class WixParser
     {
+        static IServiceProvider? serviceProvider;
+        static JoinableTaskFactory? joinableTaskFactory;
+
         public static XmlNamespaceManager WixNamespaceManager { get; }
         static WixParser()
         {
             WixNamespaceManager = new(new NameTable());
             WixNamespaceManager.AddNamespace("wix", "http://schemas.microsoft.com/wix/2006/wi");
+        }
+
+        public static async Task InitializeAsync(IServiceProvider provider, JoinableTaskFactory jtf, CancellationToken cancellationToken)
+        {
+            serviceProvider = provider;
+            joinableTaskFactory = jtf;
+
+            await joinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+            var dte = (DTE)serviceProvider.GetService(typeof(DTE));
         }
 
         public static XDocument Load(string xml)
@@ -65,5 +84,9 @@ namespace WixUiDesigner.Document
                                                                              .SingleOrDefault()
                                                                              ?.Value;
         public static string? EvaluateString(string? s) => s;
+
+        public static bool IsEnabledControl(this XElement element) => element.Attribute("Disabled")?.Value.ToLowerInvariant() != "yes";
+        public static Visibility GetControlVisibility(this XElement element) =>
+            element.Attribute("Hidden")?.Value.ToLowerInvariant() == "yes" ? Visibility.Hidden : Visibility.Visible;
     }
 }

@@ -5,6 +5,7 @@
  */
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.Shell.Interop;
@@ -54,6 +55,7 @@ namespace WixUiDesigner.Logging
             }
         }
 
+        [SuppressMessage("Reliability", "VSSDK006:Check services exist", Justification = "I do!")]
         static async Task<bool> PaneIsAccessibleAsync(CancellationToken cancellationToken = default)
         {
             if (pane is not null) return true;
