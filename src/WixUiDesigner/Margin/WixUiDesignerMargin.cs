@@ -359,10 +359,10 @@ namespace WixUiDesigner.Margin
                 var label = parentControl.Children.OfType<Label>().FirstOrDefault(l => l.Name == id) ?? new Label
                 {
                     Name = id,
-                    Content = node.EvaluateTextValue(),
                     Padding = default,
                     Margin = default
                 };
+                label.Content = node.EvaluateTextValue();
                 LayoutControl(label, node);
                 CheckAdornment(label, node, selectedElement);
                 return label;
