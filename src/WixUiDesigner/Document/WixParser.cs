@@ -51,13 +51,19 @@ namespace WixUiDesigner.Document
                 "wix:Control",
                 WixNamespaceManager);
 
+        public static string? EvaluateTextValue(this XElement? element) =>
+            EvaluateString(element.GetTextValue());
         public static string? EvaluateAttribute(this XElement? element, string attributeName) =>
-            EvaluateText(element?.Attribute(attributeName)?.Value);
+            EvaluateString(element?.Attribute(attributeName)?.Value);
         public static double EvaluateDoubleAttribute(this XElement? element, string attributeName, double defaultValue = default) =>
             double.TryParse(element.EvaluateAttribute(attributeName) ?? string.Empty,
                             NumberStyles.Any, CultureInfo.InstalledUICulture, out var d)
                 ? d
                 : defaultValue;
-        public static string? EvaluateText(string? value) => value;
+        public static string? GetTextValue(this XElement? element) => element?.Attribute("Text")?.Value ??
+                                                                      element?.XPathSelectElements("wix:Text", WixNamespaceManager)
+                                                                             .SingleOrDefault()
+                                                                             ?.Value;
+        public static string? EvaluateString(string? s) => s;
     }
 }

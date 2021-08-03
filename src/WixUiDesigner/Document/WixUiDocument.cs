@@ -48,8 +48,15 @@ namespace WixUiDesigner.Document
 
         void OnTextChanged(object sender, EventArgs e)
         {
-            Xml = WixParser.Load(WpfTextView.TextBuffer.CurrentSnapshot.GetText());
-            UpdateRequired?.Invoke(this, e);
+            try
+            {
+                Xml = WixParser.Load(WpfTextView.TextBuffer.CurrentSnapshot.GetText());
+                UpdateRequired?.Invoke(this, e);
+            }
+            catch (Exception exception)
+            {
+                Logger.Log(DebugContext.Document|DebugContext.Exceptions, $"Failed to parse {FileName}: {exception}");
+            }
         }
         void OnCaretPositionChanged(object sender, CaretPositionChangedEventArgs e) => UpdateRequired?.Invoke(this, e);
         void OnClosed(object sender, EventArgs e) => Dispose();
@@ -76,7 +83,7 @@ namespace WixUiDesigner.Document
             }
             catch (Exception exception)
             {
-                Logger.Log(DebugContext.Document, $"Failed to parse document {document.FilePath}: {exception}");
+                Logger.Log(DebugContext.Document | DebugContext.Exceptions, $"Failed to parse document {document.FilePath}: {exception}");
                 return null;
             }
         }

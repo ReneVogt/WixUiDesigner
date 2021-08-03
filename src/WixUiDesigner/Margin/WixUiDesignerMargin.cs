@@ -196,17 +196,24 @@ namespace WixUiDesigner.Margin
         }
         static void UpdateControls(Grid parentControl, XElement parentNode, XElement? selectedElement)
         {
-            var usedControls = parentNode.GetControlNodes()
-                                         .Select(node => UpdateControl(parentControl, node, selectedElement))
-                                         .Where(control => control is not null)
-                                         .ToList();
-            var controlsToRemove = parentControl.Children.Cast<Control>()
-                                                .Where(control => !usedControls.Contains(control))
-                                                .ToList();
-            controlsToRemove.ForEach(control => parentControl.Children.Remove(control));
+            try
+            {
+                var usedControls = parentNode.GetControlNodes()
+                                             .Select(node => UpdateControl(parentControl, node, selectedElement))
+                                             .Where(control => control is not null)
+                                             .ToList();
+                var controlsToRemove = parentControl.Children.Cast<Control>()
+                                                    .Where(control => !usedControls.Contains(control))
+                                                    .ToList();
+                controlsToRemove.ForEach(control => parentControl.Children.Remove(control));
 
-            var controlsToAdd = usedControls.Where(control => !parentControl.Children.Contains(control)).ToList();
-            controlsToAdd.ForEach(control => parentControl.Children.Add(control!));
+                var controlsToAdd = usedControls.Where(control => !parentControl.Children.Contains(control)).ToList();
+                controlsToAdd.ForEach(control => parentControl.Children.Add(control!));
+            }
+            catch (Exception exception)
+            {
+                Logger.Log(DebugContext.WiX|DebugContext.Margin|DebugContext.Exceptions, $"UpdateControls failed: {exception}");
+            }
         }
 
         #region Control renderer
@@ -339,24 +346,32 @@ namespace WixUiDesigner.Margin
         }
         static Control? UpdateTextControl(Grid parentControl, XElement node, XElement? selectedElement)
         {
-            var id = node.Attribute("Id")?.Value;
-            if (string.IsNullOrWhiteSpace(id))
+            try
             {
-                Logger.Log(DebugContext.Margin | DebugContext.WiX, "Found label without id!");
+                var id = node.Attribute("Id")?.Value;
+                if (string.IsNullOrWhiteSpace(id))
+                {
+                    Logger.Log(DebugContext.Margin | DebugContext.WiX, "Found label without id!");
+                    return null;
+                }
+
+                Logger.Log(DebugContext.WiX | DebugContext.Margin, $"Updating text control {id}.");
+                var label = parentControl.Children.OfType<Label>().FirstOrDefault(l => l.Name == id) ?? new Label
+                {
+                    Name = id,
+                    Content = node.EvaluateTextValue(),
+                    Padding = default,
+                    Margin = default
+                };
+                LayoutControl(label, node);
+                CheckAdornment(label, node, selectedElement);
+                return label;
+            }
+            catch (Exception exception)
+            {
+                Logger.Log(DebugContext.WiX|DebugContext.Margin|DebugContext.Exceptions, $"Failed to update a text control: {exception}");
                 return null;
             }
-
-            Logger.Log(DebugContext.WiX | DebugContext.Margin, $"Updating text control {id}.");
-            var label = parentControl.Children.OfType<Label>().FirstOrDefault(l => l.Name == id) ?? new Label
-            {
-                Name = id,
-                Content = node.EvaluateAttribute("Text"),
-                Padding = default,
-                Margin = default
-            };
-            LayoutControl(label, node);
-            CheckAdornment(label, node, selectedElement);
-            return label;
         }
         static Control? UpdateVolumnCostListControl(Grid parentControl, XElement node, XElement? selectedElement)
         {

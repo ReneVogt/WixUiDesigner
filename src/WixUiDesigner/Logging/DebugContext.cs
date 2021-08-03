@@ -19,7 +19,8 @@ namespace WixUiDesigner.Logging
         Margin = 1 << 1,
         Document = 1 << 2,
         WiX = 1 << 3,
-
+        
+        Exceptions = 1 << 31,
         All = -1
     }
 }
