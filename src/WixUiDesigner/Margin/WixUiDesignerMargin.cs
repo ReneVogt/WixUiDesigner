@@ -244,6 +244,8 @@ namespace WixUiDesigner.Margin
             "VolumnSelectCombo" => UpdateVolumnSelectComboControl(parentControl, node, selectedElement),
             _ => HandleUnknownControlType(node)
         };
+#pragma warning disable IDE0060 // Nicht verwendete Parameter entfernen
+// ReSharper disable UnusedParameter.Local
         static Control? UpdateBillboardControl(Grid parentControl, XElement node, XElement? selectedElement)
         {
             Logger.LogError($"Control {node.Attribute("Id")?.Value ?? "<null>"}] is of type {node.Attribute("Type")?.Value ?? "<null>"} which is not yet supported!");
@@ -388,6 +390,8 @@ namespace WixUiDesigner.Margin
             Logger.LogError($"Control {node.Attribute("Id")?.Value ?? "<null>"}] is of unknown type {node.Attribute("Type")?.Value ?? "<null>"}!");
             return null;
         }
+// ReSharper restore UnusedParameter.Local
+#pragma warning restore IDE0060 // Nicht verwendete Parameter entfernen
         #endregion
 
         static void LayoutControl(Control control, XElement node)
