@@ -166,7 +166,7 @@ namespace WixUiDesigner.Margin
             if (isDisposed) return;
             ThreadHelper.ThrowIfNotOnUIThread();
 
-            Logger.Log(DebugContext.WiX | DebugContext.Margin, $"Updating controls for {document.FileName}.");
+            Logger.Log(DebugContext.Margin, $"Updating controls for {document.FileName}.");
 
             try
             {
@@ -191,7 +191,7 @@ namespace WixUiDesigner.Margin
             }
             catch (Exception exception)
             {
-                Logger.LogError($"Failed to render WiX UI document: {exception}");
+                Logger.Log(DebugContext.Margin|DebugContext.WiX|DebugContext.Exceptions,$"Failed to render WiX UI document: {exception}");
             }
         }
         static void UpdateControls(Grid parentControl, XElement parentNode, XElement? selectedElement)
@@ -217,147 +217,85 @@ namespace WixUiDesigner.Margin
         }
 
         #region Control renderer
-        static Control? UpdateControl(Grid parentControl, XElement node, XElement? selectedElement) => node.Attribute("Type")?.Value switch
+        static Control? UpdateControl(Grid parentControl, XElement node, XElement? selectedElement)
         {
-            "Billboard" => UpdateBillboardControl(parentControl, node, selectedElement),
-            "Bitmap" => UpdateBitmapControl(parentControl, node, selectedElement),
-            "CheckBox" => UpdateCheckBoxControl(parentControl, node, selectedElement),
-            "ComboBox" => UpdateComboBoxControl(parentControl, node, selectedElement),
-            "DirectoryCombo" => UpdateDirectoryComboControl(parentControl, node, selectedElement),
-            "DirectoryList" => UpdateDirectoryListControl(parentControl, node, selectedElement),
-            "Edit" => UpdateEditControl(parentControl, node, selectedElement),
-            "GroupBox" => UpdateGroupBoxControl(parentControl, node, selectedElement),
-            "Hyperlink" => UpdateHyperlinkControl(parentControl, node, selectedElement),
-            "Icon" => UpdateIconControl(parentControl, node, selectedElement),
-            "Line" => UpdateLineControl(parentControl, node, selectedElement),
-            "ListBox" => UpdateListBoxControl(parentControl, node, selectedElement),
-            "ListView" => UpdateListViewControl(parentControl, node, selectedElement),
-            "MaskedEdit" => UpdateMaskedEditControl(parentControl, node, selectedElement),
-            "PathEdit" => UpdatePathEditControl(parentControl, node, selectedElement),
-            "ProgressBar" => UpdateProgressBarControl(parentControl, node, selectedElement),
-            "PushButton" => UpdatePushButtonControl(parentControl, node, selectedElement),
-            "RadioButtonGroup" => UpdateRadioButtonGroupControl(parentControl, node, selectedElement),
-            "ScrollableText" => UpdateScrollableTextControl(parentControl, node, selectedElement),
-            "SelectionTree" => UpdateSelectionTreeControl(parentControl, node, selectedElement),
-            "Text" => UpdateTextControl(parentControl, node, selectedElement),
-            "VolumnCostList" => UpdateVolumnCostListControl(parentControl, node, selectedElement),
-            "VolumnSelectCombo" => UpdateVolumnSelectComboControl(parentControl, node, selectedElement),
-            _ => HandleUnknownControlType(node)
-        };
-#pragma warning disable IDE0060 // Nicht verwendete Parameter entfernen
-// ReSharper disable UnusedParameter.Local
-        static Control? UpdateBillboardControl(Grid parentControl, XElement node, XElement? selectedElement)
-        {
-            Logger.LogError($"Control {node.Attribute("Id")?.Value ?? "<null>"}] is of type {node.Attribute("Type")?.Value ?? "<null>"} which is not yet supported!");
-            return null;
+            var id = node.Attribute("Id")?.Value!;
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                var (line, column) = node.GetPosition();
+                Logger.Log(DebugContext.Margin | DebugContext.WiX, $"Found control without id at ({line}, {column})!");
+                return null;
+            }
+            var type = node.Attribute("Type")?.Value!;
+            if (string.IsNullOrWhiteSpace(type))
+            {
+                var (line, column) = node.GetPosition();
+                Logger.Log(DebugContext.Margin | DebugContext.WiX, $"Found control without type at ({line}, {column})!");
+                return null;
+            }
+
+            return type switch
+            {
+                //"Billboard" => UpdateBillboardControl(id, parentControl, node, selectedElement),
+                //"Bitmap" => UpdateBitmapControl(id, parentControl, node, selectedElement),
+                //"CheckBox" => UpdateCheckBoxControl(id, parentControl, node, selectedElement),
+                //"ComboBox" => UpdateComboBoxControl(id, parentControl, node, selectedElement),
+                //"DirectoryCombo" => UpdateDirectoryComboControl(id, parentControl, node, selectedElement),
+                //"DirectoryList" => UpdateDirectoryListControl(id, parentControl, node, selectedElement),
+                //"Edit" => UpdateEditControl(id, parentControl, node, selectedElement),
+                //"GroupBox" => UpdateGroupBoxControl(id, parentControl, node, selectedElement),
+                //"Hyperlink" => UpdateHyperlinkControl(id, parentControl, node, selectedElement),
+                //"Icon" => UpdateIconControl(id, parentControl, node, selectedElement),
+                //"Line" => UpdateLineControl(id, parentControl, node, selectedElement),
+                //"ListBox" => UpdateListBoxControl(id, parentControl, node, selectedElement),
+                //"ListView" => UpdateListViewControl(id, parentControl, node, selectedElement),
+                //"MaskedEdit" => UpdateMaskedEditControl(id, parentControl, node, selectedElement),
+                //"PathEdit" => UpdatePathEditControl(id, parentControl, node, selectedElement),
+                //"ProgressBar" => UpdateProgressBarControl(id, parentControl, node, selectedElement),
+                "PushButton" => UpdatePushButtonControl(id, parentControl, node, selectedElement),
+                //"RadioButtonGroup" => UpdateRadioButtonGroupControl(id, parentControl, node, selectedElement),
+                //"ScrollableText" => UpdateScrollableTextControl(id, parentControl, node, selectedElement),
+                //"SelectionTree" => UpdateSelectionTreeControl(id, parentControl, node, selectedElement),
+                "Text" => UpdateTextControl(id, parentControl, node, selectedElement),
+                //"VolumnCostList" => UpdateVolumnCostListControl(id, parentControl, node, selectedElement),
+                //"VolumnSelectCombo" => UpdateVolumnSelectComboControl(id, parentControl, node, selectedElement),
+                _ => HandleUnknownControlType(id, type, node)
+            };
         }
-        static Control? UpdateBitmapControl(Grid parentControl, XElement node, XElement? selectedElement)
-        {
-            Logger.LogError($"Control {node.Attribute("Id")?.Value ?? "<null>"}] is of type {node.Attribute("Type")?.Value ?? "<null>"} which is not yet supported!");
-            return null;
-        }
-        static Control? UpdateCheckBoxControl(Grid parentControl, XElement node, XElement? selectedElement)
-        {
-            Logger.LogError($"Control {node.Attribute("Id")?.Value ?? "<null>"}] is of type {node.Attribute("Type")?.Value ?? "<null>"} which is not yet supported!");
-            return null;
-        }
-        static Control? UpdateComboBoxControl(Grid parentControl, XElement node, XElement? selectedElement)
-        {
-            Logger.LogError($"Control {node.Attribute("Id")?.Value ?? "<null>"}] is of type {node.Attribute("Type")?.Value ?? "<null>"} which is not yet supported!");
-            return null;
-        }
-        static Control? UpdateDirectoryComboControl(Grid parentControl, XElement node, XElement? selectedElement)
-        {
-            Logger.LogError($"Control {node.Attribute("Id")?.Value ?? "<null>"}] is of type {node.Attribute("Type")?.Value ?? "<null>"} which is not yet supported!");
-            return null;
-        }
-        static Control? UpdateDirectoryListControl(Grid parentControl, XElement node, XElement? selectedElement)
-        {
-            Logger.LogError($"Control {node.Attribute("Id")?.Value ?? "<null>"}] is of type {node.Attribute("Type")?.Value ?? "<null>"} which is not yet supported!");
-            return null;
-        }
-        static Control? UpdateEditControl(Grid parentControl, XElement node, XElement? selectedElement)
-        {
-            Logger.LogError($"Control {node.Attribute("Id")?.Value ?? "<null>"}] is of type {node.Attribute("Type")?.Value ?? "<null>"} which is not yet supported!");
-            return null;
-        }
-        static Control? UpdateGroupBoxControl(Grid parentControl, XElement node, XElement? selectedElement)
-        {
-            Logger.LogError($"Control {node.Attribute("Id")?.Value ?? "<null>"}] is of type {node.Attribute("Type")?.Value ?? "<null>"} which is not yet supported!");
-            return null;
-        }
-        static Control? UpdateHyperlinkControl(Grid parentControl, XElement node, XElement? selectedElement)
-        {
-            Logger.LogError($"Control {node.Attribute("Id")?.Value ?? "<null>"}] is of type {node.Attribute("Type")?.Value ?? "<null>"} which is not yet supported!");
-            return null;
-        }
-        static Control? UpdateIconControl(Grid parentControl, XElement node, XElement? selectedElement)
-        {
-            Logger.LogError($"Control {node.Attribute("Id")?.Value ?? "<null>"}] is of type {node.Attribute("Type")?.Value ?? "<null>"} which is not yet supported!");
-            return null;
-        }
-        static Control? UpdateLineControl(Grid parentControl, XElement node, XElement? selectedElement)
-        {
-            Logger.LogError($"Control {node.Attribute("Id")?.Value ?? "<null>"}] is of type {node.Attribute("Type")?.Value ?? "<null>"} which is not yet supported!");
-            return null;
-        }
-        static Control? UpdateListBoxControl(Grid parentControl, XElement node, XElement? selectedElement)
-        {
-            Logger.LogError($"Control {node.Attribute("Id")?.Value ?? "<null>"}] is of type {node.Attribute("Type")?.Value ?? "<null>"} which is not yet supported!");
-            return null;
-        }
-        static Control? UpdateListViewControl(Grid parentControl, XElement node, XElement? selectedElement)
-        {
-            Logger.LogError($"Control {node.Attribute("Id")?.Value ?? "<null>"}] is of type {node.Attribute("Type")?.Value ?? "<null>"} which is not yet supported!");
-            return null;
-        }
-        static Control? UpdateMaskedEditControl(Grid parentControl, XElement node, XElement? selectedElement)
-        {
-            Logger.LogError($"Control {node.Attribute("Id")?.Value ?? "<null>"}] is of type {node.Attribute("Type")?.Value ?? "<null>"} which is not yet supported!");
-            return null;
-        }
-        static Control? UpdatePathEditControl(Grid parentControl, XElement node, XElement? selectedElement)
-        {
-            Logger.LogError($"Control {node.Attribute("Id")?.Value ?? "<null>"}] is of type {node.Attribute("Type")?.Value ?? "<null>"} which is not yet supported!");
-            return null;
-        }
-        static Control? UpdateProgressBarControl(Grid parentControl, XElement node, XElement? selectedElement)
-        {
-            Logger.LogError($"Control {node.Attribute("Id")?.Value ?? "<null>"}] is of type {node.Attribute("Type")?.Value ?? "<null>"} which is not yet supported!");
-            return null;
-        }
-        static Control? UpdatePushButtonControl(Grid parentControl, XElement node, XElement? selectedElement)
-        {
-            Logger.LogError($"Control {node.Attribute("Id")?.Value ?? "<null>"}] is of type {node.Attribute("Type")?.Value ?? "<null>"} which is not yet supported!");
-            return null;
-        }
-        static Control? UpdateRadioButtonGroupControl(Grid parentControl, XElement node, XElement? selectedElement)
-        {
-            Logger.LogError($"Control {node.Attribute("Id")?.Value ?? "<null>"}] is of type {node.Attribute("Type")?.Value ?? "<null>"} which is not yet supported!");
-            return null;
-        }
-        static Control? UpdateScrollableTextControl(Grid parentControl, XElement node, XElement? selectedElement)
-        {
-            Logger.LogError($"Control {node.Attribute("Id")?.Value ?? "<null>"}] is of type {node.Attribute("Type")?.Value ?? "<null>"} which is not yet supported!");
-            return null;
-        }
-        static Control? UpdateSelectionTreeControl(Grid parentControl, XElement node, XElement? selectedElement)
-        {
-            Logger.LogError($"Control {node.Attribute("Id")?.Value ?? "<null>"}] is of type {node.Attribute("Type")?.Value ?? "<null>"} which is not yet supported!");
-            return null;
-        }
-        static Control? UpdateTextControl(Grid parentControl, XElement node, XElement? selectedElement)
+        static Control? UpdatePushButtonControl(string id, Grid parentControl, XElement node, XElement? selectedElement)
         {
             try
             {
-                var id = node.Attribute("Id")?.Value;
-                if (string.IsNullOrWhiteSpace(id))
-                {
-                    Logger.Log(DebugContext.Margin | DebugContext.WiX, "Found label without id!");
-                    return null;
-                }
+                Logger.Log(DebugContext.WiX | DebugContext.Margin, $"Updating button control {id}.");
+                if (node.IsBitmap())
+                    throw Errors.BitmapButtonNotSupported();
+                if (node.IsIcon())
+                    throw Errors.IconButtonNotSupported();
+                if (node.IsImage())
+                    throw Errors.BitmapButtonNotSupported();
 
-                Logger.Log(DebugContext.WiX | DebugContext.Margin, $"Updating text control {id}.");
+                var button = parentControl.Children.OfType<Button>().FirstOrDefault(l => l.Name == id) ?? new Button
+                {
+                    Name = id,
+                    Padding = default,
+                    Margin = default
+                };
+                button.Content = node.EvaluateTextValue();
+                LayoutControl(button, node);
+                CheckAdornment(button, node, selectedElement);
+                return button;
+            }
+            catch (Exception exception)
+            {
+                Logger.Log(DebugContext.WiX | DebugContext.Margin | DebugContext.Exceptions, $"Failed to update button control {id}: {exception}");
+                return null;
+            }
+        }
+        static Control? UpdateTextControl(string id, Grid parentControl, XElement node, XElement? selectedElement)
+        {
+            try
+            {
+                Logger.Log(DebugContext.WiX, $"Updating text control {id}.");
                 var label = parentControl.Children.OfType<Label>().FirstOrDefault(l => l.Name == id) ?? new Label
                 {
                     Name = id,
@@ -371,27 +309,16 @@ namespace WixUiDesigner.Margin
             }
             catch (Exception exception)
             {
-                Logger.Log(DebugContext.WiX|DebugContext.Margin|DebugContext.Exceptions, $"Failed to update a text control: {exception}");
+                Logger.Log(DebugContext.WiX|DebugContext.Margin|DebugContext.Exceptions, $"Failed to update text control {id}: {exception}");
                 return null;
             }
         }
-        static Control? UpdateVolumnCostListControl(Grid parentControl, XElement node, XElement? selectedElement)
+        static Control? HandleUnknownControlType(string id, string type, XElement node)
         {
-            Logger.LogError($"Control {node.Attribute("Id")?.Value ?? "<null>"}] is of type {node.Attribute("Type")?.Value ?? "<null>"} which is not yet supported!");
+            var (line, column) = node.GetPosition();
+            Logger.Log(DebugContext.WiX, $"Control {id} at ({line}, {column}) is of type {type} which is not supported!");
             return null;
         }
-        static Control? UpdateVolumnSelectComboControl(Grid parentControl, XElement node, XElement? selectedElement)
-        {
-            Logger.LogError($"Control {node.Attribute("Id")?.Value ?? "<null>"}] is of type {node.Attribute("Type")?.Value ?? "<null>"} which is not yet supported!");
-            return null;
-        }
-        static Control? HandleUnknownControlType(XElement node)
-        {
-            Logger.LogError($"Control {node.Attribute("Id")?.Value ?? "<null>"}] is of unknown type {node.Attribute("Type")?.Value ?? "<null>"}!");
-            return null;
-        }
-// ReSharper restore UnusedParameter.Local
-#pragma warning restore IDE0060 // Nicht verwendete Parameter entfernen
         #endregion
 
         static void LayoutControl(Control control, XElement node)

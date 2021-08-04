@@ -15,8 +15,6 @@ using System.Windows;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.XPath;
-using EnvDTE;
-using Microsoft.VisualStudio.Debugger.Symbols;
 using Microsoft.VisualStudio.Threading;
 
 #nullable enable
@@ -25,7 +23,10 @@ namespace WixUiDesigner.Document
 {
     static class WixParser
     {
+#pragma warning disable IDE0052 // Ungelesene private Member entfernen
+        // ReSharper disable once NotAccessedField.Local
         static IServiceProvider? serviceProvider;
+#pragma warning restore IDE0052 // Ungelesene private Member entfernen
         static JoinableTaskFactory? joinableTaskFactory;
 
         public static XmlNamespaceManager WixNamespaceManager { get; }
@@ -41,7 +42,6 @@ namespace WixUiDesigner.Document
             joinableTaskFactory = jtf;
 
             await joinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
-            var dte = (DTE)serviceProvider.GetService(typeof(DTE));
         }
 
         public static XDocument Load(string xml)
@@ -85,8 +85,16 @@ namespace WixUiDesigner.Document
                                                                              ?.Value;
         public static string? EvaluateString(string? s) => s;
 
-        public static bool IsEnabledControl(this XElement element) => element.Attribute("Disabled")?.Value.ToLowerInvariant() != "yes";
+        public static bool IsEnabledControl(this XElement element) => !element.HasYesAttribute("Disabled");
         public static Visibility GetControlVisibility(this XElement element) =>
-            element.Attribute("Hidden")?.Value.ToLowerInvariant() == "yes" ? Visibility.Hidden : Visibility.Visible;
+            element.HasYesAttribute("Hidden") ? Visibility.Hidden : Visibility.Visible;
+        public static bool IsBitmap(this XElement element) => element.HasYesAttribute("Bitmap");
+        public static bool IsIcon(this XElement element) => element.HasYesAttribute("Icon");
+        public static bool IsImage(this XElement element) => element.HasYesAttribute("Image");
+        public static bool HasYesAttribute(this XElement element, string attributeName) =>
+            element.Attribute(attributeName)?.Value.ToLowerInvariant() == "yes";
+
+        public static (int line, int column) GetPosition(this IXmlLineInfo? element) =>
+            element?.HasLineInfo() == true ? (element.LineNumber, element.LinePosition) : (-1, -1);
     }
 }
