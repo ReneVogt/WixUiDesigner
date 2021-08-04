@@ -246,7 +246,7 @@ namespace WixUiDesigner.Margin
                 //"GroupBox" => UpdateGroupBoxControl(id, parentControl, node, selectedElement),
                 //"Hyperlink" => UpdateHyperlinkControl(id, parentControl, node, selectedElement),
                 //"Icon" => UpdateIconControl(id, parentControl, node, selectedElement),
-                //"Line" => UpdateLineControl(id, parentControl, node, selectedElement),
+                "Line" => UpdateLineControl(id, parentControl, node, selectedElement),
                 //"ListBox" => UpdateListBoxControl(id, parentControl, node, selectedElement),
                 //"ListView" => UpdateListViewControl(id, parentControl, node, selectedElement),
                 //"MaskedEdit" => UpdateMaskedEditControl(id, parentControl, node, selectedElement),
@@ -291,6 +291,28 @@ namespace WixUiDesigner.Margin
             catch (Exception exception)
             {
                 Logger.Log(DebugContext.WiX | DebugContext.Margin | DebugContext.Exceptions, $"Failed to update edit control {id}: {exception}");
+                return null;
+            }
+        }
+        static Control? UpdateLineControl(string id, Grid parentControl, XElement node, XElement? selectedElement)
+        {
+            try
+            {
+                Logger.Log(DebugContext.WiX | DebugContext.Margin, $"Updating line control {id}.");
+
+                var line = parentControl.Children.OfType<Separator>().FirstOrDefault(l => l.Name == id) ?? new Separator
+                {
+                    Name = id,
+                    Padding = default,
+                    Margin = default
+                };
+                LayoutControl(line, node);
+                CheckAdornment(line, node, selectedElement);
+                return line;
+            }
+            catch (Exception exception)
+            {
+                Logger.Log(DebugContext.WiX | DebugContext.Margin | DebugContext.Exceptions, $"Failed to update button control {id}: {exception}");
                 return null;
             }
         }
