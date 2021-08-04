@@ -242,7 +242,7 @@ namespace WixUiDesigner.Margin
                 //"ComboBox" => UpdateComboBoxControl(id, parentControl, node, selectedElement),
                 //"DirectoryCombo" => UpdateDirectoryComboControl(id, parentControl, node, selectedElement),
                 //"DirectoryList" => UpdateDirectoryListControl(id, parentControl, node, selectedElement),
-                //"Edit" => UpdateEditControl(id, parentControl, node, selectedElement),
+                "Edit" => UpdateEditControl(id, parentControl, node, selectedElement),
                 //"GroupBox" => UpdateGroupBoxControl(id, parentControl, node, selectedElement),
                 //"Hyperlink" => UpdateHyperlinkControl(id, parentControl, node, selectedElement),
                 //"Icon" => UpdateIconControl(id, parentControl, node, selectedElement),
@@ -261,6 +261,38 @@ namespace WixUiDesigner.Margin
                 //"VolumnSelectCombo" => UpdateVolumnSelectComboControl(id, parentControl, node, selectedElement),
                 _ => HandleUnknownControlType(id, type, node)
             };
+        }
+        static Control? UpdateEditControl(string id, Grid parentControl, XElement node, XElement? selectedElement)
+        {
+            try
+            {
+                Logger.Log(DebugContext.WiX | DebugContext.Margin, $"Updating edit control {id}.");
+                var textBox = parentControl.Children.OfType<TextBox>().FirstOrDefault(l => l.Name == id) ?? new TextBox
+                {
+                    Name = id,
+                    Padding = default,
+                    Margin = default
+                };
+                textBox.Text = node.EvaluateTextValue();
+                if (node.IsMultiLine())
+                {
+                    textBox.AcceptsReturn = true;
+                    textBox.TextWrapping = TextWrapping.Wrap;
+                }
+                else
+                {
+                    textBox.AcceptsReturn = false;
+                    textBox.TextWrapping = TextWrapping.NoWrap;
+                }
+                LayoutControl(textBox, node);
+                CheckAdornment(textBox, node, selectedElement);
+                return textBox;
+            }
+            catch (Exception exception)
+            {
+                Logger.Log(DebugContext.WiX | DebugContext.Margin | DebugContext.Exceptions, $"Failed to update edit control {id}: {exception}");
+                return null;
+            }
         }
         static Control? UpdatePushButtonControl(string id, Grid parentControl, XElement node, XElement? selectedElement)
         {

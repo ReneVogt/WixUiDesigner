@@ -91,6 +91,8 @@ namespace WixUiDesigner.Document
         public static bool IsBitmap(this XElement element) => element.HasYesAttribute("Bitmap");
         public static bool IsIcon(this XElement element) => element.HasYesAttribute("Icon");
         public static bool IsImage(this XElement element) => element.HasYesAttribute("Image");
+        public static bool IsMultiLine(this XElement element) => element.HasYesAttribute("Multiline");
+
         public static bool HasYesAttribute(this XElement element, string attributeName) =>
             element.Attribute(attributeName)?.Value.ToLowerInvariant() == "yes";
 
