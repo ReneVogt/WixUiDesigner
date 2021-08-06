@@ -249,7 +249,7 @@ namespace WixUiDesigner.Margin
                 "Line" => UpdateLineControl(id, parentControl, node, selectedElement),
                 //"ListBox" => UpdateListBoxControl(id, parentControl, node, selectedElement),
                 //"ListView" => UpdateListViewControl(id, parentControl, node, selectedElement),
-                //"MaskedEdit" => UpdateMaskedEditControl(id, parentControl, node, selectedElement),
+                "MaskedEdit" => UpdateMaskedEditControl(id, parentControl, node, selectedElement),
                 //"PathEdit" => UpdatePathEditControl(id, parentControl, node, selectedElement),
                 //"ProgressBar" => UpdateProgressBarControl(id, parentControl, node, selectedElement),
                 "PushButton" => UpdatePushButtonControl(id, parentControl, node, selectedElement),
@@ -307,6 +307,8 @@ namespace WixUiDesigner.Margin
                     Margin = default
                 };
                 LayoutControl(line, node);
+                line.Height = Math.Max(line.Height, 1);
+                line.Width = Math.Max(line.Width, 1);
                 CheckAdornment(line, node, selectedElement);
                 return line;
             }
@@ -316,6 +318,9 @@ namespace WixUiDesigner.Margin
                 return null;
             }
         }
+        static Control? UpdateMaskedEditControl(string id, Grid parentControl, XElement node, XElement? selectedElement) =>
+            UpdateEditControl(id, parentControl, node, selectedElement);
+
         static Control? UpdatePushButtonControl(string id, Grid parentControl, XElement node, XElement? selectedElement)
         {
             try
