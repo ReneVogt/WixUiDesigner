@@ -9,6 +9,7 @@ using Microsoft.VisualStudio.Shell;
 using WixUiDesigner.Logging;
 using System.Runtime.CompilerServices;
 using System.Windows.Controls;
+using WixUiDesigner.Exceptions;
 
 #nullable enable
 
@@ -16,8 +17,10 @@ namespace WixUiDesigner
 {
     public sealed class Options : DialogPage, INotifyPropertyChanged
     {
+        double designersize = DefaultDesignerSize;
         public const DebugContext DefaultDebugContext = DebugContext.None;
         public const Dock DefaultDesignerPosition = Dock.Top;
+        public const double DefaultDesignerSize = 0.4d;
         public const double DefaultUpdateInterval = 0.3d;
 
         DebugContext debugcontext = DefaultDebugContext;
@@ -41,6 +44,23 @@ namespace WixUiDesigner
                 OnPropertyChanged();
             }
         }
+        [Category("Layout")]
+        [DisplayName("Designer size")]
+        [Description("The initial relative size of the designer margin.")]
+        [DefaultValue(DefaultDesignerSize)]
+        public double DesignerSize
+        {
+            get => designersize;
+            set
+            {
+                if (value == designersize)
+                    return;
+                if (!(value > 0 && value < 1)) throw Errors.InvalidDesignerSize(value);
+                designersize = value;
+                OnPropertyChanged();
+            }
+        }
+
         [Category("Behaviour")]
         [DisplayName("Update interval")]
         [Description("The seconds to wait after code changes before updating the design view.")]
@@ -52,6 +72,7 @@ namespace WixUiDesigner
             {
                 if (value == updateinterval)
                     return;
+                if (value <= 0) throw Errors.NonPositiveUpdateInterval(value);
                 updateinterval = value;
                 OnPropertyChanged();
             }
@@ -75,6 +96,7 @@ namespace WixUiDesigner
 
         public override string ToString() => $@"{nameof(DebugContext)}: {DebugContext}
 {nameof(DesignerPosition)}: {DesignerPosition}
+{nameof(DesignerSize)}: {DesignerSize}
 {nameof(UpdateInterval)}: {UpdateInterval}";
 
         void OnPropertyChanged([CallerMemberName] string caller = "") => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(caller));

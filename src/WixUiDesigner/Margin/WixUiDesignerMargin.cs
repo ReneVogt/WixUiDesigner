@@ -24,10 +24,7 @@ namespace WixUiDesigner.Margin
 {
     sealed class WixUiDesignerMargin : DockPanel, IWpfTextViewMargin
     {
-        const double MinimumSize = 150;
-
         readonly Dock position;
-        readonly ScrollViewer displayContainer;
         readonly Grid dialog;
         readonly WixUiDocument document;
         readonly DispatcherTimer updateTimer;
@@ -35,9 +32,10 @@ namespace WixUiDesigner.Margin
         bool isDisposed;
 
         bool Horizontal => position == Dock.Top || position == Dock.Bottom;
+        double ViewportSize => Horizontal ? document.WpfTextView.ViewportHeight : document.WpfTextView.ViewportWidth;
+        public double MarginSize => Horizontal ? ActualHeight : ActualWidth;
 
         public FrameworkElement VisualElement => this;
-        public double MarginSize => ActualHeight;
         public bool Enabled => !isDisposed;
 
         public WixUiDesignerMargin(WixUiDocument document)
@@ -47,26 +45,15 @@ namespace WixUiDesigner.Margin
             this.document = document ?? throw new ArgumentNullException(nameof(document));
             position = WixUiDesignerPackage.Options?.DesignerPosition ?? Options.DefaultDesignerPosition;
 
-            updateTimer = new (){Interval = TimeSpan.FromSeconds(WixUiDesignerPackage.Options?.UpdateInterval ?? Options.DefaultUpdateInterval)};
+            updateTimer = new() { Interval = TimeSpan.FromSeconds(WixUiDesignerPackage.Options?.UpdateInterval ?? Options.DefaultUpdateInterval) };
             updateTimer.Tick += OnUpdateTimerTicked;
 
             dialog = new() {Background = SystemColors.ControlBrush, Margin = new(20)};
-            displayContainer = new()
-            {
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                VerticalAlignment = VerticalAlignment.Stretch,
-                ClipToBounds = true,
-                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                Content = dialog
-            };
 
+            this.document.WpfTextView.VisualElement.Loaded += OnEditorLoaded;
             this.document.UpdateRequired += OnUpdateRequired;
             this.document.Closed += OnClosed;
-            if (Horizontal)
-                this.document.WpfTextView.ViewportHeightChanged += OnViewPortChanged;
-            else
-                this.document.WpfTextView.ViewportWidthChanged += OnViewPortChanged;
+            
         }
         public void Dispose()
         {
@@ -75,8 +62,7 @@ namespace WixUiDesigner.Margin
             Logger.Log(DebugContext.WiX, $"Closing margin for {document.FileName}.");
             updateTimer.Tick -= OnUpdateTimerTicked;
             updateTimer.Stop();
-            document.WpfTextView.ViewportHeightChanged -= OnViewPortChanged;
-            document.WpfTextView.ViewportWidthChanged -= OnViewPortChanged;
+            document.WpfTextView.VisualElement.Loaded -= OnEditorLoaded;
             document.UpdateRequired -= OnUpdateRequired;
             document.Closed -= OnClosed;
             document.Dispose();
@@ -88,6 +74,12 @@ namespace WixUiDesigner.Margin
             _ => null,
         };
 
+        void OnEditorLoaded(object sender, RoutedEventArgs e)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            CreateFramework();
+            UpdateControls();
+        }
         void OnUpdateTimerTicked(object sender, EventArgs e)
         {
             updateTimer.Stop();
@@ -107,10 +99,19 @@ namespace WixUiDesigner.Margin
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
-            var size = Math.Max(MinimumSize, 0.4 * (Horizontal ? document.WpfTextView.ViewportHeight : document.WpfTextView.ViewportWidth));
+            var size = (WixUiDesignerPackage.Options?.DesignerSize ?? Options.DefaultDesignerSize) * (ViewportSize + MarginSize);
+            if (dialog.Parent is ScrollViewer oldContainer)
+            {
+                size = Horizontal ? oldContainer.ActualHeight : oldContainer.ActualWidth;
+                oldContainer.Content = null;
+            }
 
+            Logger.Log(DebugContext.Margin, $"Creating framework for {document.FileName} (viewport: {ViewportSize}, old margin: {MarginSize}, new margin: {size}).");
+            
+            Children.Clear();
+
+            GridSplitter splitter = new ();
             Grid grid = new();
-            GridSplitter splitter = new();
             if (Horizontal)
             {
                 splitter.Height = 5;
@@ -126,12 +127,21 @@ namespace WixUiDesigner.Margin
             splitter.VerticalAlignment = VerticalAlignment.Stretch;
             splitter.HorizontalAlignment = HorizontalAlignment.Stretch;
 
+            ScrollViewer displayContainer = new()
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch,
+                ClipToBounds = true,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Content = dialog
+            };
             grid.Children.Add(displayContainer);
 
             switch (position)
             {
                 case Dock.Top:
-                    grid.RowDefinitions.Add(new() { Height = new(size, GridUnitType.Pixel), MinHeight = MinimumSize });
+                    grid.RowDefinitions.Add(new() { Height = new(size, GridUnitType.Pixel)});
                     grid.RowDefinitions.Add(new() { Height = new(5, GridUnitType.Pixel) });
                     grid.RowDefinitions.Add(new() { Height = new(0, GridUnitType.Star) });
                     Grid.SetColumn(displayContainer, 0);
@@ -140,12 +150,12 @@ namespace WixUiDesigner.Margin
                 case Dock.Bottom:
                     grid.RowDefinitions.Add(new() { Height = new(0, GridUnitType.Star) });
                     grid.RowDefinitions.Add(new() { Height = new(5, GridUnitType.Pixel) });
-                    grid.RowDefinitions.Add(new() { Height = new(size, GridUnitType.Pixel), MinHeight = MinimumSize });
+                    grid.RowDefinitions.Add(new() { Height = new(size, GridUnitType.Pixel)});
                     Grid.SetColumn(displayContainer, 0);
                     Grid.SetRow(displayContainer, 2);
                     break;
                 case Dock.Left:
-                    grid.ColumnDefinitions.Add(new() { Width = new(size, GridUnitType.Pixel), MinWidth = MinimumSize });
+                    grid.ColumnDefinitions.Add(new() { Width = new(size, GridUnitType.Pixel)});
                     grid.ColumnDefinitions.Add(new() { Width = new(5, GridUnitType.Pixel) });
                     grid.ColumnDefinitions.Add(new() { Width = new(0, GridUnitType.Star) });
                     Grid.SetRow(displayContainer, 0);
@@ -154,7 +164,7 @@ namespace WixUiDesigner.Margin
                 case Dock.Right:
                     grid.ColumnDefinitions.Add(new() { Width = new(0, GridUnitType.Star) });
                     grid.ColumnDefinitions.Add(new() { Width = new(5, GridUnitType.Pixel) });
-                    grid.ColumnDefinitions.Add(new() { Width = new(size, GridUnitType.Pixel), MinWidth = MinimumSize });
+                    grid.ColumnDefinitions.Add(new() { Width = new(size, GridUnitType.Pixel)});
                     Grid.SetRow(displayContainer, 0);
                     Grid.SetColumn(displayContainer, 2);
                     break;
@@ -274,7 +284,7 @@ namespace WixUiDesigner.Margin
             {
                 Logger.Log(DebugContext.WiX | DebugContext.Margin, $"Updating checkbox control {id}.");
                 var checkBox = node.IsPushLike()
-                                   ? (parentControl.Children.OfType<ToggleButton>().FirstOrDefault(l => l.Name == id && l.GetType() == typeof(ToggleButton)) ?? new ToggleButton())
+                                   ? parentControl.Children.OfType<ToggleButton>().FirstOrDefault(l => l.Name == id && l.GetType() == typeof(ToggleButton)) ?? new ToggleButton()
                                    : parentControl.Children.OfType<CheckBox>().FirstOrDefault(l => l.Name == id) ?? new CheckBox();
                 checkBox.Name = id;
                 checkBox.Padding = default;
@@ -407,16 +417,6 @@ namespace WixUiDesigner.Margin
             return null;
         }
         #endregion
-
-        void OnViewPortChanged(object sender, EventArgs e)
-        {
-            ThreadHelper.ThrowIfNotOnUIThread();
-            Logger.Log(DebugContext.Margin, $"Viewport size of {document.FileName} changed: ({document.WpfTextView.ViewportWidth}, {document.WpfTextView.ViewportHeight}).");
-            document.WpfTextView.ViewportHeightChanged -= OnViewPortChanged;
-            document.WpfTextView.ViewportWidthChanged -= OnViewPortChanged;
-            CreateFramework();
-            OnUpdateRequired(this, EventArgs.Empty);
-        }
 
         static void LayoutControl(Control control, XElement node)
         {
