@@ -8,6 +8,7 @@ using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
 using System.Windows.Threading;
 using System.Xml.Linq;
@@ -243,7 +244,7 @@ namespace WixUiDesigner.Margin
             {
                 //"Billboard" => UpdateBillboardControl(id, parentControl, node, selectedElement),
                 //"Bitmap" => UpdateBitmapControl(id, parentControl, node, selectedElement),
-                //"CheckBox" => UpdateCheckBoxControl(id, parentControl, node, selectedElement),
+                "CheckBox" => UpdateCheckBoxControl(id, parentControl, node, selectedElement),
                 //"ComboBox" => UpdateComboBoxControl(id, parentControl, node, selectedElement),
                 //"DirectoryCombo" => UpdateDirectoryComboControl(id, parentControl, node, selectedElement),
                 //"DirectoryList" => UpdateDirectoryListControl(id, parentControl, node, selectedElement),
@@ -266,6 +267,28 @@ namespace WixUiDesigner.Margin
                 //"VolumnSelectCombo" => UpdateVolumnSelectComboControl(id, parentControl, node, selectedElement),
                 _ => HandleUnknownControlType(id, type, node)
             };
+        }
+        static Control? UpdateCheckBoxControl(string id, Grid parentControl, XElement node, XElement? selectedElement)
+        {
+            try
+            {
+                Logger.Log(DebugContext.WiX | DebugContext.Margin, $"Updating checkbox control {id}.");
+                var checkBox = node.IsPushLike()
+                                   ? (parentControl.Children.OfType<ToggleButton>().FirstOrDefault(l => l.Name == id && l.GetType() == typeof(ToggleButton)) ?? new ToggleButton())
+                                   : parentControl.Children.OfType<CheckBox>().FirstOrDefault(l => l.Name == id) ?? new CheckBox();
+                checkBox.Name = id;
+                checkBox.Padding = default;
+                checkBox.Margin = default;
+                checkBox.Content = node.EvaluateTextValue();
+                LayoutControl(checkBox, node);
+                CheckAdornment(checkBox, node, selectedElement);
+                return checkBox;
+            }
+            catch (Exception exception)
+            {
+                Logger.Log(DebugContext.WiX | DebugContext.Margin | DebugContext.Exceptions, $"Failed to update checkbox control {id}: {exception}");
+                return null;
+            }
         }
         static Control? UpdateEditControl(string id, Grid parentControl, XElement node, XElement? selectedElement)
         {
