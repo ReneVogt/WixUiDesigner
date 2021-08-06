@@ -409,6 +409,9 @@ namespace WixUiDesigner.Margin
 
             control.IsEnabled = node.IsEnabledControl();
             control.Visibility = node.GetControlVisibility();
+
+            control.HorizontalContentAlignment = node.IsRightAligned() ? HorizontalAlignment.Right : HorizontalAlignment.Left;
+            control.FlowDirection = node.IsRightToLeft() ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
         }
         static void CheckAdornment(Control control, XElement node, XElement? selectedElement)
         {

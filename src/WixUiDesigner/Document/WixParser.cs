@@ -92,6 +92,8 @@ namespace WixUiDesigner.Document
         public static bool IsIcon(this XElement element) => element.HasYesAttribute("Icon");
         public static bool IsImage(this XElement element) => element.HasYesAttribute("Image");
         public static bool IsMultiLine(this XElement element) => element.HasYesAttribute("Multiline");
+        public static bool IsRightAligned(this XElement element) => element.HasYesAttribute("RightAligned");
+        public static bool IsRightToLeft(this XElement element) => element.HasYesAttribute("RightToLeft");
 
         public static bool HasYesAttribute(this XElement element, string attributeName) =>
             element.Attribute(attributeName)?.Value.ToLowerInvariant() == "yes";
