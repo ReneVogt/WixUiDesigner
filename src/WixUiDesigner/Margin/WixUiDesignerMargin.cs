@@ -23,6 +23,8 @@ namespace WixUiDesigner.Margin
 {
     sealed class WixUiDesignerMargin : DockPanel, IWpfTextViewMargin
     {
+        const double MinimumSize = 150;
+
         readonly Dock position;
         readonly ScrollViewer displayContainer;
         readonly Grid dialog;
@@ -58,10 +60,12 @@ namespace WixUiDesigner.Margin
                 Content = dialog
             };
 
-            CreateFramework();
-            UpdateControls();
             this.document.UpdateRequired += OnUpdateRequired;
             this.document.Closed += OnClosed;
+            if (Horizontal)
+                this.document.WpfTextView.ViewportHeightChanged += OnViewPortChanged;
+            else
+                this.document.WpfTextView.ViewportWidthChanged += OnViewPortChanged;
         }
         public void Dispose()
         {
@@ -70,6 +74,8 @@ namespace WixUiDesigner.Margin
             Logger.Log(DebugContext.WiX, $"Closing margin for {document.FileName}.");
             updateTimer.Tick -= OnUpdateTimerTicked;
             updateTimer.Stop();
+            document.WpfTextView.ViewportHeightChanged -= OnViewPortChanged;
+            document.WpfTextView.ViewportWidthChanged -= OnViewPortChanged;
             document.UpdateRequired -= OnUpdateRequired;
             document.Closed -= OnClosed;
             document.Dispose();
@@ -100,7 +106,7 @@ namespace WixUiDesigner.Margin
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
-            var size = 0.5 * (Horizontal ? document.WpfTextView.ViewportHeight : document.WpfTextView.ViewportWidth);
+            var size = Math.Max(MinimumSize, 0.4 * (Horizontal ? document.WpfTextView.ViewportHeight : document.WpfTextView.ViewportWidth));
 
             Grid grid = new();
             GridSplitter splitter = new();
@@ -124,7 +130,7 @@ namespace WixUiDesigner.Margin
             switch (position)
             {
                 case Dock.Top:
-                    grid.RowDefinitions.Add(new() { Height = new(size, GridUnitType.Pixel), MinHeight = 150 });
+                    grid.RowDefinitions.Add(new() { Height = new(size, GridUnitType.Pixel), MinHeight = MinimumSize });
                     grid.RowDefinitions.Add(new() { Height = new(5, GridUnitType.Pixel) });
                     grid.RowDefinitions.Add(new() { Height = new(0, GridUnitType.Star) });
                     Grid.SetColumn(displayContainer, 0);
@@ -133,12 +139,12 @@ namespace WixUiDesigner.Margin
                 case Dock.Bottom:
                     grid.RowDefinitions.Add(new() { Height = new(0, GridUnitType.Star) });
                     grid.RowDefinitions.Add(new() { Height = new(5, GridUnitType.Pixel) });
-                    grid.RowDefinitions.Add(new() { Height = new(size, GridUnitType.Pixel), MinHeight = 150 });
+                    grid.RowDefinitions.Add(new() { Height = new(size, GridUnitType.Pixel), MinHeight = MinimumSize });
                     Grid.SetColumn(displayContainer, 0);
                     Grid.SetRow(displayContainer, 2);
                     break;
                 case Dock.Left:
-                    grid.ColumnDefinitions.Add(new() { Width = new(size, GridUnitType.Pixel), MinWidth = 150 });
+                    grid.ColumnDefinitions.Add(new() { Width = new(size, GridUnitType.Pixel), MinWidth = MinimumSize });
                     grid.ColumnDefinitions.Add(new() { Width = new(5, GridUnitType.Pixel) });
                     grid.ColumnDefinitions.Add(new() { Width = new(0, GridUnitType.Star) });
                     Grid.SetRow(displayContainer, 0);
@@ -147,7 +153,7 @@ namespace WixUiDesigner.Margin
                 case Dock.Right:
                     grid.ColumnDefinitions.Add(new() { Width = new(0, GridUnitType.Star) });
                     grid.ColumnDefinitions.Add(new() { Width = new(5, GridUnitType.Pixel) });
-                    grid.ColumnDefinitions.Add(new() { Width = new(size, GridUnitType.Pixel), MinWidth = 150 });
+                    grid.ColumnDefinitions.Add(new() { Width = new(size, GridUnitType.Pixel), MinWidth = MinimumSize });
                     Grid.SetRow(displayContainer, 0);
                     Grid.SetColumn(displayContainer, 2);
                     break;
@@ -159,7 +165,6 @@ namespace WixUiDesigner.Margin
             Grid.SetRow(splitter, Horizontal ? 1 : 0);
 
             Children.Add(grid);
-            //splitter.DragCompleted += OnSplitterDragged;
         }
         void UpdateControls()
         {
@@ -379,6 +384,16 @@ namespace WixUiDesigner.Margin
             return null;
         }
         #endregion
+
+        void OnViewPortChanged(object sender, EventArgs e)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            Logger.Log(DebugContext.Margin, $"Viewport size of {document.FileName} changed: ({document.WpfTextView.ViewportWidth}, {document.WpfTextView.ViewportHeight}).");
+            document.WpfTextView.ViewportHeightChanged -= OnViewPortChanged;
+            document.WpfTextView.ViewportWidthChanged -= OnViewPortChanged;
+            CreateFramework();
+            OnUpdateRequired(this, EventArgs.Empty);
+        }
 
         static void LayoutControl(Control control, XElement node)
         {
