@@ -55,7 +55,7 @@ namespace WixUiDesigner
             {
                 if (value == designersize)
                     return;
-                if (!(value > 0 && value < 1)) throw Errors.InvalidDesignerSize(value);
+                if (value is not (> 0 and < 1)) throw Errors.InvalidDesignerSize(value);
                 designersize = value;
                 OnPropertyChanged();
             }

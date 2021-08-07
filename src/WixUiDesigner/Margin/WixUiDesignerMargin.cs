@@ -34,6 +34,8 @@ namespace WixUiDesigner.Margin
 
         bool isDisposed;
 
+        XElement? selectedElement;
+
         bool Horizontal => position == Dock.Top || position == Dock.Bottom;
         double ViewportSize => Horizontal ? document.WpfTextView.ViewportHeight : document.WpfTextView.ViewportWidth;
         public double MarginSize => Horizontal ? ActualHeight : ActualWidth;
@@ -220,22 +222,22 @@ namespace WixUiDesigner.Margin
                 var containingLine = bufferPosition.GetContainingLine();
                 int column = containingLine.Start.Difference(bufferPosition) + 1;
                 int line = containingLine.LineNumber + 1;
-                var selectedElement = xml.GetControlAt(line, column);
+                selectedElement = xml.GetControlAt(line, column);
                 Logger.Log(DebugContext.Margin, $"Selected control: {selectedElement?.GetId() ?? "<null>"}");
 
-                UpdateControls(dialog, dialogNode, selectedElement);
+                UpdateControls(dialog, dialogNode);
             }
             catch (Exception exception)
             {
                 Logger.Log(DebugContext.Margin|DebugContext.WiX|DebugContext.Exceptions,$"Failed to render WiX UI document: {exception}");
             }
         }
-        void UpdateControls(Grid parentControl, XElement parentNode, XElement? selectedElement)
+        void UpdateControls(Grid parentControl, XElement parentNode)
         {
             try
             {
                 var usedControls = parentNode.GetControlNodes()
-                                             .Select(node => UpdateControl(parentControl, node, selectedElement))
+                                             .Select(node => UpdateControl(parentControl, node))
                                              .Where(control => control is not null)
                                              .ToList();
                 var controlsToRemove = parentControl.Children.Cast<Control>()
@@ -253,7 +255,7 @@ namespace WixUiDesigner.Margin
         }
 
         #region Control renderer
-        Control? UpdateControl(Grid parentControl, XElement node, XElement? selectedElement)
+        Control? UpdateControl(Grid parentControl, XElement node)
         {
             var id = node.GetId();
             if (string.IsNullOrWhiteSpace(id))
@@ -272,33 +274,33 @@ namespace WixUiDesigner.Margin
 
             return type switch
             {
-                //"Billboard" => UpdateBillboardControl(id, parentControl, node, selectedElement),
-                //"Bitmap" => UpdateBitmapControl(id, parentControl, node, selectedElement),
-                "CheckBox" => UpdateCheckBoxControl(id, parentControl, node, selectedElement),
-                //"ComboBox" => UpdateComboBoxControl(id, parentControl, node, selectedElement),
-                //"DirectoryCombo" => UpdateDirectoryComboControl(id, parentControl, node, selectedElement),
-                //"DirectoryList" => UpdateDirectoryListControl(id, parentControl, node, selectedElement),
-                "Edit" => UpdateEditControl(id, parentControl, node, selectedElement),
-                //"GroupBox" => UpdateGroupBoxControl(id, parentControl, node, selectedElement),
-                //"Hyperlink" => UpdateHyperlinkControl(id, parentControl, node, selectedElement),
-                //"Icon" => UpdateIconControl(id, parentControl, node, selectedElement),
-                "Line" => UpdateLineControl(id, parentControl, node, selectedElement),
-                //"ListBox" => UpdateListBoxControl(id, parentControl, node, selectedElement),
-                //"ListView" => UpdateListViewControl(id, parentControl, node, selectedElement),
-                "MaskedEdit" => UpdateMaskedEditControl(id, parentControl, node, selectedElement),
-                //"PathEdit" => UpdatePathEditControl(id, parentControl, node, selectedElement),
-                //"ProgressBar" => UpdateProgressBarControl(id, parentControl, node, selectedElement),
-                "PushButton" => UpdatePushButtonControl(id, parentControl, node, selectedElement),
-                //"RadioButtonGroup" => UpdateRadioButtonGroupControl(id, parentControl, node, selectedElement),
-                //"ScrollableText" => UpdateScrollableTextControl(id, parentControl, node, selectedElement),
-                //"SelectionTree" => UpdateSelectionTreeControl(id, parentControl, node, selectedElement),
-                "Text" => UpdateTextControl(id, parentControl, node, selectedElement),
-                //"VolumnCostList" => UpdateVolumnCostListControl(id, parentControl, node, selectedElement),
-                //"VolumnSelectCombo" => UpdateVolumnSelectComboControl(id, parentControl, node, selectedElement),
+                //"Billboard" => UpdateBillboardControl(id, parentControl, node),
+                //"Bitmap" => UpdateBitmapControl(id, parentControl, node),
+                "CheckBox" => UpdateCheckBoxControl(id, parentControl, node),
+                //"ComboBox" => UpdateComboBoxControl(id, parentControl, node),
+                //"DirectoryCombo" => UpdateDirectoryComboControl(id, parentControl, node),
+                //"DirectoryList" => UpdateDirectoryListControl(id, parentControl, node),
+                "Edit" => UpdateEditControl(id, parentControl, node),
+                //"GroupBox" => UpdateGroupBoxControl(id, parentControl, node),
+                //"Hyperlink" => UpdateHyperlinkControl(id, parentControl, node),
+                //"Icon" => UpdateIconControl(id, parentControl, node),
+                "Line" => UpdateLineControl(id, parentControl, node),
+                //"ListBox" => UpdateListBoxControl(id, parentControl, node),
+                //"ListView" => UpdateListViewControl(id, parentControl, node),
+                "MaskedEdit" => UpdateMaskedEditControl(id, parentControl, node),
+                "PathEdit" => UpdatePathEditControl(id, parentControl, node),
+                //"ProgressBar" => UpdateProgressBarControl(id, parentControl, node),
+                "PushButton" => UpdatePushButtonControl(id, parentControl, node),
+                //"RadioButtonGroup" => UpdateRadioButtonGroupControl(id, parentControl, node),
+                //"ScrollableText" => UpdateScrollableTextControl(id, parentControl, node),
+                //"SelectionTree" => UpdateSelectionTreeControl(id, parentControl, node),
+                "Text" => UpdateTextControl(id, parentControl, node),
+                //"VolumnCostList" => UpdateVolumnCostListControl(id, parentControl, node),
+                //"VolumnSelectCombo" => UpdateVolumnSelectComboControl(id, parentControl, node),
                 _ => HandleUnknownControlType(id, type, node)
             };
         }
-        Control? UpdateCheckBoxControl(string id, Grid parentControl, XElement node, XElement? selectedElement)
+        Control? UpdateCheckBoxControl(string id, Grid parentControl, XElement node)
         {
             try
             {
@@ -320,7 +322,7 @@ namespace WixUiDesigner.Margin
                 return null;
             }
         }
-        Control? UpdateEditControl(string id, Grid parentControl, XElement node, XElement? selectedElement)
+        Control? UpdateEditControl(string id, Grid parentControl, XElement node)
         {
             try
             {
@@ -352,7 +354,7 @@ namespace WixUiDesigner.Margin
                 return null;
             }
         }
-        Control? UpdateLineControl(string id, Grid parentControl, XElement node, XElement? selectedElement)
+        Control? UpdateLineControl(string id, Grid parentControl, XElement node)
         {
             try
             {
@@ -376,10 +378,12 @@ namespace WixUiDesigner.Margin
                 return null;
             }
         }
-        Control? UpdateMaskedEditControl(string id, Grid parentControl, XElement node, XElement? selectedElement) =>
-            UpdateEditControl(id, parentControl, node, selectedElement);
+        Control? UpdateMaskedEditControl(string id, Grid parentControl, XElement node) =>
+            UpdateEditControl(id, parentControl, node);
+        Control? UpdatePathEditControl(string id, Grid parentControl, XElement node) =>
+            UpdateEditControl(id, parentControl, node);
 
-        Control? UpdatePushButtonControl(string id, Grid parentControl, XElement node, XElement? selectedElement)
+        Control? UpdatePushButtonControl(string id, Grid parentControl, XElement node)
         {
             try
             {
@@ -408,7 +412,7 @@ namespace WixUiDesigner.Margin
                 return null;
             }
         }
-        Control? UpdateTextControl(string id, Grid parentControl, XElement node, XElement? selectedElement)
+        Control? UpdateTextControl(string id, Grid parentControl, XElement node)
         {
             try
             {
@@ -454,7 +458,6 @@ namespace WixUiDesigner.Margin
             control.Width = node.EvaluateDoubleAttribute("Width", control.Width);
             control.Height = node.EvaluateDoubleAttribute("Height", control.Height);
 
-            control.IsEnabled = node.IsEnabledControl();
             control.Visibility = node.GetControlVisibility();
 
             control.HorizontalContentAlignment = node.IsRightAligned() ? HorizontalAlignment.Right : HorizontalAlignment.Left;

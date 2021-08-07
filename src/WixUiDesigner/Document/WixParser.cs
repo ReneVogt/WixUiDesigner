@@ -87,7 +87,6 @@ namespace WixUiDesigner.Document
                                                                              ?.Value;
         public static string? EvaluateString(string? s) => s;
 
-        public static bool IsEnabledControl(this XElement element) => !element.HasYesAttribute("Disabled");
         public static Visibility GetControlVisibility(this XElement element) =>
             element.HasYesAttribute("Hidden") ? Visibility.Hidden : Visibility.Visible;
         public static bool IsBitmap(this XElement element) => element.HasYesAttribute("Bitmap");
