@@ -52,6 +52,7 @@ namespace WixUiDesigner.Margin
             updateTimer.Tick += OnUpdateTimerTicked;
 
             dialog = new() {Background = SystemColors.ControlBrush, Margin = new(20)};
+            dialog.PreviewMouseLeftButtonUp += OnControlClicked;
 
             this.document.WpfTextView.VisualElement.Loaded += OnEditorLoaded;
             
@@ -99,16 +100,17 @@ namespace WixUiDesigner.Margin
         void OnClosed(object sender, EventArgs e) => Dispose();
         void OnControlClicked(object sender, MouseButtonEventArgs e)
         {
-            if (sender is not Control control ||
-                control.Tag is not IXmlLineInfo lineInfo ||
+            if (sender is not FrameworkElement element ||
+                element.Tag is not IXmlLineInfo lineInfo ||
                 !lineInfo.HasLineInfo()) return;
 
-            Logger.Log(DebugContext.Margin, $"Control {control.Name} clicked, setting caret to ({lineInfo.LineNumber}, {lineInfo.LinePosition}).");
+            Logger.Log(DebugContext.Margin, $"Control {element.Name} clicked, setting caret to ({lineInfo.LineNumber}, {lineInfo.LinePosition}).");
 
             ITextSnapshotLine line = document.WpfTextView.TextSnapshot.GetLineFromLineNumber(lineInfo.LineNumber-1);
             SnapshotPoint point = new (line.Snapshot, line.Start.Position + lineInfo.LinePosition-1);
             document.WpfTextView.Caret.MoveTo(point);
             document.WpfTextView.VisualElement.Focus();
+            document.WpfTextView.ViewScroller.EnsureSpanVisible(new (document.WpfTextView.Caret.Position.BufferPosition, 0));
         }
 
         void CreateFramework()
@@ -204,11 +206,13 @@ namespace WixUiDesigner.Margin
             {
                 var xml = document.Xml;
                 var dialogNode = xml.GetDialogNode();
+                dialog.Tag = dialogNode;
 
                 if (!(int.TryParse(dialogNode.Attribute("Width")?.Value ?? throw Errors.InvalidDialogSize(), out var width) &&
                       int.TryParse(dialogNode.Attribute("Height")?.Value ?? throw Errors.InvalidDialogSize(), out var height)))
                     throw Errors.InvalidDialogSize();
 
+                dialog.Name = dialogNode.GetId();
                 dialog.Width = width;
                 dialog.Height = height;
 
@@ -217,7 +221,7 @@ namespace WixUiDesigner.Margin
                 int column = containingLine.Start.Difference(bufferPosition) + 1;
                 int line = containingLine.LineNumber + 1;
                 var selectedElement = xml.GetControlAt(line, column);
-                Logger.Log(DebugContext.Margin, $"Selected control: {selectedElement?.Attribute("Id")?.Value ?? "<null>"}");
+                Logger.Log(DebugContext.Margin, $"Selected control: {selectedElement?.GetId() ?? "<null>"}");
 
                 UpdateControls(dialog, dialogNode, selectedElement);
             }
@@ -251,7 +255,7 @@ namespace WixUiDesigner.Margin
         #region Control renderer
         Control? UpdateControl(Grid parentControl, XElement node, XElement? selectedElement)
         {
-            var id = node.Attribute("Id")?.Value!;
+            var id = node.GetId();
             if (string.IsNullOrWhiteSpace(id))
             {
                 var (line, column) = node.GetPosition();
@@ -437,10 +441,8 @@ namespace WixUiDesigner.Margin
         void LayoutControl(Control control, XElement node)
         {
             if (control.Tag is null)
-            {
-                control.Tag = node;
                 control.PreviewMouseLeftButtonUp += OnControlClicked;
-            }
+            control.Tag = node;
 
             control.HorizontalAlignment = HorizontalAlignment.Left;
             control.VerticalAlignment = VerticalAlignment.Top;

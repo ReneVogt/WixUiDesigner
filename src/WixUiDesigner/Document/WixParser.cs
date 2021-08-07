@@ -50,6 +50,7 @@ namespace WixUiDesigner.Document
             return XDocument.Load(textReader, LoadOptions.PreserveWhitespace | LoadOptions.SetLineInfo);
         }
         public static bool IsWixUiDocument(this XDocument xml) => xml.XPathSelectElements("/wix:Wix/wix:Fragment/wix:UI/wix:Dialog", WixNamespaceManager).Count() == 1;
+
         public static XElement GetDialogNode(this XDocument xml) =>
             xml.XPathSelectElements("/wix:Wix/wix:Fragment/wix:UI/wix:Dialog", WixNamespaceManager).Single();
         public static XElement? GetControlAt(this XDocument xml, int line, int column) =>
@@ -70,6 +71,7 @@ namespace WixUiDesigner.Document
                 "wix:Control",
                 WixNamespaceManager);
 
+        public static string GetId(this XElement element) => element.Attribute("Id")?.Value ?? string.Empty;
         public static string? EvaluateTextValue(this XElement? element) =>
             EvaluateString(element.GetTextValue());
         public static string? EvaluateAttribute(this XElement? element, string attributeName) =>
