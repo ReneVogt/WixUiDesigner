@@ -10,9 +10,12 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
+using System.Windows.Input;
 using System.Windows.Threading;
+using System.Xml;
 using System.Xml.Linq;
 using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using WixUiDesigner.Document;
 using WixUiDesigner.Exceptions;
@@ -51,9 +54,9 @@ namespace WixUiDesigner.Margin
             dialog = new() {Background = SystemColors.ControlBrush, Margin = new(20)};
 
             this.document.WpfTextView.VisualElement.Loaded += OnEditorLoaded;
+            
             this.document.UpdateRequired += OnUpdateRequired;
             this.document.Closed += OnClosed;
-            
         }
         public void Dispose()
         {
@@ -94,6 +97,19 @@ namespace WixUiDesigner.Margin
             updateTimer.Start();
         }
         void OnClosed(object sender, EventArgs e) => Dispose();
+        void OnControlClicked(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is not Control control ||
+                control.Tag is not IXmlLineInfo lineInfo ||
+                !lineInfo.HasLineInfo()) return;
+
+            Logger.Log(DebugContext.Margin, $"Control {control.Name} clicked, setting caret to ({lineInfo.LineNumber}, {lineInfo.LinePosition}).");
+
+            ITextSnapshotLine line = document.WpfTextView.TextSnapshot.GetLineFromLineNumber(lineInfo.LineNumber-1);
+            SnapshotPoint point = new (line.Snapshot, line.Start.Position + lineInfo.LinePosition-1);
+            document.WpfTextView.Caret.MoveTo(point);
+            document.WpfTextView.VisualElement.Focus();
+        }
 
         void CreateFramework()
         {
@@ -210,7 +226,7 @@ namespace WixUiDesigner.Margin
                 Logger.Log(DebugContext.Margin|DebugContext.WiX|DebugContext.Exceptions,$"Failed to render WiX UI document: {exception}");
             }
         }
-        static void UpdateControls(Grid parentControl, XElement parentNode, XElement? selectedElement)
+        void UpdateControls(Grid parentControl, XElement parentNode, XElement? selectedElement)
         {
             try
             {
@@ -233,7 +249,7 @@ namespace WixUiDesigner.Margin
         }
 
         #region Control renderer
-        static Control? UpdateControl(Grid parentControl, XElement node, XElement? selectedElement)
+        Control? UpdateControl(Grid parentControl, XElement node, XElement? selectedElement)
         {
             var id = node.Attribute("Id")?.Value!;
             if (string.IsNullOrWhiteSpace(id))
@@ -278,7 +294,7 @@ namespace WixUiDesigner.Margin
                 _ => HandleUnknownControlType(id, type, node)
             };
         }
-        static Control? UpdateCheckBoxControl(string id, Grid parentControl, XElement node, XElement? selectedElement)
+        Control? UpdateCheckBoxControl(string id, Grid parentControl, XElement node, XElement? selectedElement)
         {
             try
             {
@@ -300,7 +316,7 @@ namespace WixUiDesigner.Margin
                 return null;
             }
         }
-        static Control? UpdateEditControl(string id, Grid parentControl, XElement node, XElement? selectedElement)
+        Control? UpdateEditControl(string id, Grid parentControl, XElement node, XElement? selectedElement)
         {
             try
             {
@@ -332,7 +348,7 @@ namespace WixUiDesigner.Margin
                 return null;
             }
         }
-        static Control? UpdateLineControl(string id, Grid parentControl, XElement node, XElement? selectedElement)
+        Control? UpdateLineControl(string id, Grid parentControl, XElement node, XElement? selectedElement)
         {
             try
             {
@@ -356,10 +372,10 @@ namespace WixUiDesigner.Margin
                 return null;
             }
         }
-        static Control? UpdateMaskedEditControl(string id, Grid parentControl, XElement node, XElement? selectedElement) =>
+        Control? UpdateMaskedEditControl(string id, Grid parentControl, XElement node, XElement? selectedElement) =>
             UpdateEditControl(id, parentControl, node, selectedElement);
 
-        static Control? UpdatePushButtonControl(string id, Grid parentControl, XElement node, XElement? selectedElement)
+        Control? UpdatePushButtonControl(string id, Grid parentControl, XElement node, XElement? selectedElement)
         {
             try
             {
@@ -388,7 +404,7 @@ namespace WixUiDesigner.Margin
                 return null;
             }
         }
-        static Control? UpdateTextControl(string id, Grid parentControl, XElement node, XElement? selectedElement)
+        Control? UpdateTextControl(string id, Grid parentControl, XElement node, XElement? selectedElement)
         {
             try
             {
@@ -418,8 +434,14 @@ namespace WixUiDesigner.Margin
         }
         #endregion
 
-        static void LayoutControl(Control control, XElement node)
+        void LayoutControl(Control control, XElement node)
         {
+            if (control.Tag is null)
+            {
+                control.Tag = node;
+                control.PreviewMouseLeftButtonUp += OnControlClicked;
+            }
+
             control.HorizontalAlignment = HorizontalAlignment.Left;
             control.VerticalAlignment = VerticalAlignment.Top;
 
