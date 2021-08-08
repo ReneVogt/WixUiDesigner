@@ -20,16 +20,35 @@ namespace WixUiDesigner.Document
         public event EventHandler? Closed;
 
         bool disposed;
+        XDocument xml;
+        bool xmlChanged;
         
         public string FileName { get; }
         public IWpfTextView WpfTextView { get; }
-        public XDocument Xml { get; private set; }
+        public XDocument Xml
+        {
+            get
+            {
+                if (!xmlChanged) return xml;
+                xmlChanged = false;
+                try
+                {
+                    xml = WixParser.Load(WpfTextView.TextBuffer.CurrentSnapshot.GetText());
+                }
+                catch (Exception exception)
+                {
+                    Logger.Log(DebugContext.Document | DebugContext.Exceptions, $"Failed to parse {FileName}: {exception}");
+                }
+
+                return xml;
+            }
+        }
 
         WixUiDocument(string fileName, IWpfTextView wpfTextView, XDocument xml)
         {
             FileName = fileName;
             WpfTextView = wpfTextView;
-            Xml = xml;
+            this.xml = xml;
 
             WpfTextView.TextBuffer.Changed += OnTextChanged;
             WpfTextView.Caret.PositionChanged += OnCaretPositionChanged;
@@ -48,15 +67,8 @@ namespace WixUiDesigner.Document
 
         void OnTextChanged(object sender, EventArgs e)
         {
-            try
-            {
-                Xml = WixParser.Load(WpfTextView.TextBuffer.CurrentSnapshot.GetText());
-                UpdateRequired?.Invoke(this, e);
-            }
-            catch (Exception exception)
-            {
-                Logger.Log(DebugContext.Document|DebugContext.Exceptions, $"Failed to parse {FileName}: {exception}");
-            }
+            xmlChanged = true;
+            UpdateRequired?.Invoke(this, e);
         }
         void OnCaretPositionChanged(object sender, CaretPositionChangedEventArgs e) => UpdateRequired?.Invoke(this, e);
         void OnClosed(object sender, EventArgs e) => Dispose();

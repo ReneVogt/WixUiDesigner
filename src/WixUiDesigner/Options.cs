@@ -99,6 +99,6 @@ namespace WixUiDesigner
 {nameof(DesignerSize)}: {DesignerSize}
 {nameof(UpdateInterval)}: {UpdateInterval}";
 
-        void OnPropertyChanged([CallerMemberName] string caller = "") => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(caller));
+        void OnPropertyChanged([CallerMemberName] string caller = "") => PropertyChanged?.Invoke(this, new(caller));
     }
 }

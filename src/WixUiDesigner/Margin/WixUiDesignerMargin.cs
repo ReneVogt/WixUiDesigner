@@ -36,7 +36,7 @@ namespace WixUiDesigner.Margin
 
         XElement? selectedElement;
 
-        bool Horizontal => position == Dock.Top || position == Dock.Bottom;
+        bool Horizontal => position is Dock.Top or Dock.Bottom;
         double ViewportSize => Horizontal ? document.WpfTextView.ViewportHeight : document.WpfTextView.ViewportWidth;
         public double MarginSize => Horizontal ? ActualHeight : ActualWidth;
 
@@ -77,7 +77,7 @@ namespace WixUiDesigner.Margin
         public ITextViewMargin? GetTextViewMargin(string marginName) => marginName switch
         {
             nameof(WixUiDesignerLeftMarginFactory) or nameof(WixUiDesignerRightMarginFactory) or nameof(WixUiDesignerTopMarginFactory) or nameof(WixUiDesignerBottomMarginFactory) => this,
-            _ => null,
+            _ => null
         };
 
         void OnEditorLoaded(object sender, RoutedEventArgs e)
@@ -102,9 +102,7 @@ namespace WixUiDesigner.Margin
         void OnClosed(object sender, EventArgs e) => Dispose();
         void OnControlClicked(object sender, MouseButtonEventArgs e)
         {
-            if (sender is not FrameworkElement element ||
-                element.Tag is not IXmlLineInfo lineInfo ||
-                !lineInfo.HasLineInfo()) return;
+            if (sender is not FrameworkElement {Tag: IXmlLineInfo lineInfo} element || !lineInfo.HasLineInfo()) return;
 
             Logger.Log(DebugContext.Margin, $"Control {element.Name} clicked, setting caret to ({lineInfo.LineNumber}, {lineInfo.LinePosition}).");
 
@@ -292,7 +290,7 @@ namespace WixUiDesigner.Margin
                 //"ProgressBar" => UpdateProgressBarControl(id, parentControl, node),
                 "PushButton" => UpdatePushButtonControl(id, parentControl, node),
                 //"RadioButtonGroup" => UpdateRadioButtonGroupControl(id, parentControl, node),
-                //"ScrollableText" => UpdateScrollableTextControl(id, parentControl, node),
+                "ScrollableText" => UpdateScrollableTextControl(id, parentControl, node),
                 //"SelectionTree" => UpdateSelectionTreeControl(id, parentControl, node),
                 "Text" => UpdateTextControl(id, parentControl, node),
                 //"VolumnCostList" => UpdateVolumnCostListControl(id, parentControl, node),
@@ -382,7 +380,6 @@ namespace WixUiDesigner.Margin
             UpdateEditControl(id, parentControl, node);
         Control? UpdatePathEditControl(string id, Grid parentControl, XElement node) =>
             UpdateEditControl(id, parentControl, node);
-
         Control? UpdatePushButtonControl(string id, Grid parentControl, XElement node)
         {
             try
@@ -412,6 +409,16 @@ namespace WixUiDesigner.Margin
                 return null;
             }
         }
+        Control? UpdateScrollableTextControl(string id, Grid parentControl, XElement node)
+        {
+            if (UpdateEditControl(id, parentControl, node) is not TextBox textBox) return null;
+            textBox.AcceptsReturn = true;
+            textBox.TextWrapping = TextWrapping.NoWrap;
+            ScrollViewer.SetHorizontalScrollBarVisibility(textBox, ScrollBarVisibility.Auto);
+            ScrollViewer.SetVerticalScrollBarVisibility(textBox, ScrollBarVisibility.Auto);
+            return textBox;
+        }
+
         Control? UpdateTextControl(string id, Grid parentControl, XElement node)
         {
             try

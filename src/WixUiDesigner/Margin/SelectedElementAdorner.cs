@@ -23,7 +23,7 @@ namespace WixUiDesigner.Margin
         {
             base.OnRender(drawingContext);
             if (AdornedElement is not Control c) return;
-            drawingContext.DrawRectangle(null, pen, new Rect(0, 0, c.ActualWidth, c.ActualHeight));
+            drawingContext.DrawRectangle(null, pen, new(0, 0, c.ActualWidth, c.ActualHeight));
         }
     }
 }
