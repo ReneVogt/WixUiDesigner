@@ -11,6 +11,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using System.Xml;
 using System.Xml.Linq;
@@ -34,6 +35,7 @@ namespace WixUiDesigner.Margin
         readonly Grid dialogGrid;
         readonly Grid dialog;
         readonly Label caption;
+        readonly ScaleTransform scaleTransform;
 
         bool isDisposed;
 
@@ -42,6 +44,15 @@ namespace WixUiDesigner.Margin
         bool Horizontal => position is Dock.Top or Dock.Bottom;
         double ViewportSize => Horizontal ? document.WpfTextView.ViewportHeight : document.WpfTextView.ViewportWidth;
         public double MarginSize => Horizontal ? ActualHeight : ActualWidth;
+        double Scaling
+        {
+            get => scaleTransform.ScaleX;
+            set
+            {
+                if (value < 0.1) return;
+                scaleTransform.ScaleX = scaleTransform.ScaleY = value;
+            }
+        }
 
         public FrameworkElement VisualElement => this;
         public bool Enabled => !isDisposed;
@@ -67,14 +78,16 @@ namespace WixUiDesigner.Margin
                 VerticalContentAlignment = VerticalAlignment.Center
             };
             caption.PreviewMouseLeftButtonUp += OnControlClicked;
+            scaleTransform = new(1, 1);
             dialogGrid = new()
             {
-                Margin = new Thickness(20),
+                Margin = new(20),
                 RowDefinitions =
                 {
                     new() {Height = new(0, GridUnitType.Auto)},
                     new() {Height = new(0, GridUnitType.Auto)}
-                }
+                },
+                LayoutTransform = scaleTransform
             };
             dialogGrid.Children.Add(caption);
             dialogGrid.Children.Add(dialog);
@@ -108,6 +121,7 @@ namespace WixUiDesigner.Margin
         void OnEditorLoaded(object sender, RoutedEventArgs e)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
+            Logger.Log(DebugContext.Margin, $"Editor loaded for {document.FileName}.");
             CreateFramework();
             UpdateControls();
         }
@@ -137,13 +151,21 @@ namespace WixUiDesigner.Margin
             document.WpfTextView.VisualElement.Focus();
             document.WpfTextView.ViewScroller.EnsureSpanVisible(new (document.WpfTextView.Caret.Position.BufferPosition, 0));
         }
+        protected override void OnPreviewMouseWheel(MouseWheelEventArgs e)
+        {
+            base.OnMouseWheel(e);
+            if (e.Delta == 0 || !(Keyboard.IsKeyDown(Key.LeftCtrl) || (Keyboard.IsKeyDown(Key.RightCtrl)))) return;
+            var delta = (double)e.Delta / 1200;
+            Scaling += delta;
+            Logger.Log(DebugContext.Margin, $"Rescaling by {delta} to {Scaling}.");
+        }
 
         void CreateFramework()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
             var size = (WixUiDesignerPackage.Options?.DesignerSize ?? Options.DefaultDesignerSize) * (ViewportSize + MarginSize);
-            if (dialog.Parent is ScrollViewer oldContainer)
+            if (dialogGrid.Parent is ScrollViewer oldContainer)
             {
                 size = Horizontal ? oldContainer.ActualHeight : oldContainer.ActualWidth;
                 oldContainer.Content = null;
@@ -244,6 +266,9 @@ namespace WixUiDesigner.Margin
                 caption.Name = dialog.Name + "caption";
                 caption.Width = width;
                 caption.Content = dialogNode.EvaluateAttribute("Title");
+
+                scaleTransform.CenterX = dialogGrid.ActualWidth / 2;
+                scaleTransform.CenterY = dialogGrid.ActualHeight / 2;
 
                 var bufferPosition = document.WpfTextView.Caret.Position.BufferPosition;
                 var containingLine = bufferPosition.GetContainingLine();
