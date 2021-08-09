@@ -28,9 +28,12 @@ namespace WixUiDesigner.Margin
     sealed class WixUiDesignerMargin : DockPanel, IWpfTextViewMargin
     {
         readonly Dock position;
-        readonly Grid dialog;
         readonly WixUiDocument document;
         readonly DispatcherTimer updateTimer;
+
+        readonly Grid dialogGrid;
+        readonly Grid dialog;
+        readonly Label caption;
 
         bool isDisposed;
 
@@ -53,8 +56,30 @@ namespace WixUiDesigner.Margin
             updateTimer = new() { Interval = TimeSpan.FromSeconds(WixUiDesignerPackage.Options?.UpdateInterval ?? Options.DefaultUpdateInterval) };
             updateTimer.Tick += OnUpdateTimerTicked;
 
-            dialog = new() {Background = SystemColors.ControlBrush, Margin = new(20)};
+            dialog = new() {Background = SystemColors.ControlBrush};
             dialog.PreviewMouseLeftButtonUp += OnControlClicked;
+            caption = new()
+            {
+                Background = SystemColors.ActiveCaptionBrush, 
+                Foreground = SystemColors.ActiveCaptionTextBrush, 
+                Height = 25,
+                HorizontalContentAlignment = HorizontalAlignment.Left,
+                VerticalContentAlignment = VerticalAlignment.Center
+            };
+            caption.PreviewMouseLeftButtonUp += OnControlClicked;
+            dialogGrid = new()
+            {
+                Margin = new Thickness(20),
+                RowDefinitions =
+                {
+                    new() {Height = new(0, GridUnitType.Auto)},
+                    new() {Height = new(0, GridUnitType.Auto)}
+                }
+            };
+            dialogGrid.Children.Add(caption);
+            dialogGrid.Children.Add(dialog);
+            Grid.SetRow(caption, 0);
+            Grid.SetRow(dialog, 1);
 
             this.document.WpfTextView.VisualElement.Loaded += OnEditorLoaded;
             
@@ -152,7 +177,7 @@ namespace WixUiDesigner.Margin
                 ClipToBounds = true,
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                Content = dialog
+                Content = dialogGrid
             };
             grid.Children.Add(displayContainer);
 
@@ -206,7 +231,7 @@ namespace WixUiDesigner.Margin
             {
                 var xml = document.Xml;
                 var dialogNode = xml.GetDialogNode();
-                dialog.Tag = dialogNode;
+                dialog.Tag = caption.Tag = dialogNode;
 
                 if (!(int.TryParse(dialogNode.Attribute("Width")?.Value ?? throw Errors.InvalidDialogSize(), out var width) &&
                       int.TryParse(dialogNode.Attribute("Height")?.Value ?? throw Errors.InvalidDialogSize(), out var height)))
@@ -215,6 +240,10 @@ namespace WixUiDesigner.Margin
                 dialog.Name = dialogNode.GetId();
                 dialog.Width = width;
                 dialog.Height = height;
+
+                caption.Name = dialog.Name + "caption";
+                caption.Width = width;
+                caption.Content = dialogNode.EvaluateAttribute("Title");
 
                 var bufferPosition = document.WpfTextView.Caret.Position.BufferPosition;
                 var containingLine = bufferPosition.GetContainingLine();
@@ -332,16 +361,10 @@ namespace WixUiDesigner.Margin
                     Margin = default
                 };
                 textBox.Text = node.EvaluateTextValue();
-                if (node.IsMultiLine())
-                {
-                    textBox.AcceptsReturn = true;
-                    textBox.TextWrapping = TextWrapping.Wrap;
-                }
-                else
-                {
-                    textBox.AcceptsReturn = false;
-                    textBox.TextWrapping = TextWrapping.NoWrap;
-                }
+                ScrollViewer.SetHorizontalScrollBarVisibility(textBox, ScrollBarVisibility.Hidden);
+                ScrollViewer.SetVerticalScrollBarVisibility(textBox, node.IsMultiLine() ? ScrollBarVisibility.Auto : ScrollBarVisibility.Hidden);
+                textBox.AcceptsReturn = true;
+                textBox.TextWrapping = TextWrapping.Wrap;
                 LayoutControl(textBox, node);
                 CheckAdornment(textBox, node, selectedElement);
                 return textBox;
@@ -412,9 +435,6 @@ namespace WixUiDesigner.Margin
         Control? UpdateScrollableTextControl(string id, Grid parentControl, XElement node)
         {
             if (UpdateEditControl(id, parentControl, node) is not TextBox textBox) return null;
-            textBox.AcceptsReturn = true;
-            textBox.TextWrapping = TextWrapping.NoWrap;
-            ScrollViewer.SetHorizontalScrollBarVisibility(textBox, ScrollBarVisibility.Auto);
             ScrollViewer.SetVerticalScrollBarVisibility(textBox, ScrollBarVisibility.Auto);
             return textBox;
         }
