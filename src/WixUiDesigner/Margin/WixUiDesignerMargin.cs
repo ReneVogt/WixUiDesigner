@@ -153,8 +153,8 @@ namespace WixUiDesigner.Margin
         }
         protected override void OnPreviewMouseWheel(MouseWheelEventArgs e)
         {
-            base.OnMouseWheel(e);
-            if (e.Delta == 0 || !(Keyboard.IsKeyDown(Key.LeftCtrl) || (Keyboard.IsKeyDown(Key.RightCtrl)))) return;
+            base.OnPreviewMouseWheel(e);
+            if (e.Delta == 0 || !(Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl))) return;
             var delta = (double)e.Delta / 1200;
             Scaling += delta;
             Logger.Log(DebugContext.Margin, $"Rescaling by {delta} to {Scaling}.");
