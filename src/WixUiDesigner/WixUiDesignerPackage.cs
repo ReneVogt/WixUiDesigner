@@ -21,7 +21,7 @@ namespace WixUiDesigner
 {
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [Guid(Defines.PackageGuidString)]
-    [InstalledProductRegistration("#110", "#112", "0.1.0.4")]
+    [InstalledProductRegistration("#110", "#112", "0.1.0.6")]
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [ProvideOptionPage(typeof(Options), Defines.ProductName, "General", 0, 0, true)]
     public sealed class WixUiDesignerPackage : AsyncPackage

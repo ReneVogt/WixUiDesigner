@@ -32,6 +32,9 @@ namespace WixUiDesigner.Margin
         readonly WixUiDocument document;
         readonly DispatcherTimer updateTimer;
 
+        readonly DispatcherTimer scalingAdornerTimer;
+        readonly ScalingAdorner scalingAdorner;
+
         readonly Grid dialogGrid;
         readonly Grid dialog;
         readonly Label caption;
@@ -49,7 +52,7 @@ namespace WixUiDesigner.Margin
             get => scaleTransform.ScaleX;
             set
             {
-                if (value < 0.1) return;
+                if (value is <0.1 or >4) return;
                 scaleTransform.ScaleX = scaleTransform.ScaleY = value;
             }
         }
@@ -89,10 +92,19 @@ namespace WixUiDesigner.Margin
                 },
                 LayoutTransform = scaleTransform
             };
+            var decorator = new AdornerDecorator {Child = dialog};
             dialogGrid.Children.Add(caption);
-            dialogGrid.Children.Add(dialog);
+            dialogGrid.Children.Add(decorator);
             Grid.SetRow(caption, 0);
-            Grid.SetRow(dialog, 1);
+            Grid.SetRow(decorator, 1);
+
+            scalingAdorner = new (dialog);
+            scalingAdornerTimer = new() {Interval = TimeSpan.FromMilliseconds(500)};
+            scalingAdornerTimer.Tick += (_, _) =>
+            {
+                scalingAdornerTimer.Stop();
+                scalingAdorner.Visible = false;
+            };
 
             this.document.WpfTextView.VisualElement.Loaded += OnEditorLoaded;
             
@@ -155,8 +167,14 @@ namespace WixUiDesigner.Margin
         {
             base.OnPreviewMouseWheel(e);
             if (e.Delta == 0 || !(Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl))) return;
-            var delta = (double)e.Delta / 1200;
+            int change = e.Delta / 120;
+            var delta = 0.1 * change;
             Scaling += delta;
+            if (Scaling is >0.9 and <1.1) Scaling = 1; // fix rounding problems
+            scalingAdornerTimer.Stop();
+            scalingAdorner.Visible = true;
+            scalingAdorner.Percentage = (int)(100 * Scaling);
+            scalingAdornerTimer.Start();
             Logger.Log(DebugContext.Margin, $"Rescaling by {delta} to {Scaling}.");
         }
 
@@ -202,6 +220,8 @@ namespace WixUiDesigner.Margin
                 Content = dialogGrid
             };
             grid.Children.Add(displayContainer);
+            var adornerLayer = AdornerLayer.GetAdornerLayer(dialog);
+            adornerLayer?.Add(scalingAdorner);
 
             switch (position)
             {
