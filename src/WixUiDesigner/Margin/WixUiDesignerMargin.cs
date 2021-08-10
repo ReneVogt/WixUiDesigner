@@ -221,7 +221,8 @@ namespace WixUiDesigner.Margin
             };
             grid.Children.Add(displayContainer);
             var adornerLayer = AdornerLayer.GetAdornerLayer(dialog);
-            adornerLayer?.Add(scalingAdorner);
+            if (adornerLayer?.GetAdorners(dialog)?.Contains(scalingAdorner) != true)
+                adornerLayer?.Add(scalingAdorner);
 
             switch (position)
             {
@@ -380,8 +381,10 @@ namespace WixUiDesigner.Margin
                 var image = parentControl.Children.OfType<Image>().FirstOrDefault(l => l.Name == id) ?? new Image
                 {
                     Name = id,
-                    Margin = default
+                    Margin = default,
+                    Stretch = Stretch.Fill
                 };
+                image.Source = node.GetImageSource();
                 LayoutControl(image, node);
                 CheckAdornment(image, node, selectedElement);
                 return image;

@@ -12,10 +12,13 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.XPath;
 using Microsoft.VisualStudio.Threading;
+using WixUiDesigner.Logging;
 
 #nullable enable
 
@@ -23,11 +26,9 @@ namespace WixUiDesigner.Document
 {
     static class WixParser
     {
-#pragma warning disable IDE0052 // Ungelesene private Member entfernen
-        // ReSharper disable once NotAccessedField.Local
-        static IServiceProvider? serviceProvider;
-#pragma warning restore IDE0052 // Ungelesene private Member entfernen
         static JoinableTaskFactory? joinableTaskFactory;
+
+        static readonly BitmapImage MissingImage = new();
 
         public static XmlNamespaceManager WixNamespaceManager { get; }
         static WixParser()
@@ -36,12 +37,25 @@ namespace WixUiDesigner.Document
             WixNamespaceManager.AddNamespace("wix", "http://schemas.microsoft.com/wix/2006/wi");
         }
 
-        public static async Task InitializeAsync(IServiceProvider provider, JoinableTaskFactory jtf, CancellationToken cancellationToken)
+        public static async Task InitializeAsync(JoinableTaskFactory jtf, CancellationToken cancellationToken)
         {
-            serviceProvider = provider;
             joinableTaskFactory = jtf;
-
             await joinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+
+            try
+            {
+                MissingImage.BeginInit();
+                MissingImage.UriSource = new("Resources/MissingImage.png", UriKind.Relative);
+                MissingImage.CacheOption = BitmapCacheOption.OnLoad;
+                MissingImage.EndInit();
+                MissingImage.Freeze();
+         
+                await Logger.LogAsync(DebugContext.WiX, "WiX parser loaded images.", cancellationToken);
+            }
+            catch (Exception e)
+            {
+                await Logger.LogErrorAsync($"Failed to initialize WiX parser: {e}", cancellationToken);
+            }
         }
 
         public static XDocument Load(string xml)
@@ -96,6 +110,13 @@ namespace WixUiDesigner.Document
         public static bool IsRightAligned(this XElement element) => element.HasYesAttribute("RightAligned");
         public static bool IsRightToLeft(this XElement element) => element.HasYesAttribute("RightToLeft");
         public static bool IsPushLike(this XElement element) => element.HasYesAttribute("PushLike");
+
+        public static ImageSource GetImageSource(this XElement element) => GetImageSource(element.GetTextValue());
+        public static ImageSource GetImageSource(string? source)
+        {
+            Logger.Log(DebugContext.WiX, $"Trying to locate image {source}.");
+            return MissingImage;
+        }
 
         public static bool HasYesAttribute(this XElement element, string attributeName) =>
             element.Attribute(attributeName)?.Value.ToLowerInvariant() == "yes";

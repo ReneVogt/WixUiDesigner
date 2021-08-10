@@ -21,7 +21,7 @@ namespace WixUiDesigner
 {
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [Guid(Defines.PackageGuidString)]
-    [InstalledProductRegistration("#110", "#112", "0.1.0.6")]
+    [InstalledProductRegistration("#110", "#112", "0.1.0.8")]
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [ProvideOptionPage(typeof(Options), Defines.ProductName, "General", 0, 0, true)]
     public sealed class WixUiDesignerPackage : AsyncPackage
@@ -68,7 +68,7 @@ namespace WixUiDesigner
 
             try
             {
-                await WixParser.InitializeAsync(this, JoinableTaskFactory, cancellationToken);
+                await WixParser.InitializeAsync(JoinableTaskFactory, cancellationToken);
                 await Logger.LogAsync(DebugContext.Package, "Package initialized.", cancellationToken);
             }
             catch (Exception ex)
