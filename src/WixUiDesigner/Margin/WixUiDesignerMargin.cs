@@ -350,7 +350,7 @@ namespace WixUiDesigner.Margin
                 //"Billboard" => UpdateBillboardControl(id, parentControl, node),
                 "Bitmap" => UpdateBitmapControl(id, parentControl, node),
                 "CheckBox" => UpdateCheckBoxControl(id, parentControl, node),
-                //"ComboBox" => UpdateComboBoxControl(id, parentControl, node),
+                "ComboBox" => UpdateComboBoxControl(id, parentControl, node),
                 //"DirectoryCombo" => UpdateDirectoryComboControl(id, parentControl, node),
                 //"DirectoryList" => UpdateDirectoryListControl(id, parentControl, node),
                 "Edit" => UpdateEditControl(id, parentControl, node),
@@ -414,6 +414,35 @@ namespace WixUiDesigner.Margin
             catch (Exception exception)
             {
                 Logger.Log(DebugContext.WiX | DebugContext.Margin | DebugContext.Exceptions, $"Failed to update checkbox control {id}: {exception}");
+                return null;
+            }
+        }
+        FrameworkElement? UpdateComboBoxControl(string id, Grid parentControl, XElement node)
+        {
+            try
+            {
+                Logger.Log(DebugContext.WiX | DebugContext.Margin, $"Updating combobox control {id}.");
+                var comboBox = parentControl.Children.OfType<ComboBox>().FirstOrDefault(l => l.Name == id) ?? new ComboBox
+                {
+                    Name = id,
+                };
+                comboBox.IsEditable = !node.IsComboList();
+                string[] items = node.GetComboBoxItems();
+                if (items.Length != comboBox.Items.Count || items.Select((s, i) => (s, i)).Any(x => x.s != (string)comboBox.Items[x.i]))
+                {
+                    comboBox.Items.Clear();
+                    foreach(var s in items) comboBox.Items.Add(s);
+                }
+
+                if (comboBox.Items.Count > 0 && comboBox.SelectedIndex < 0) comboBox.SelectedIndex = 0;
+
+                LayoutControl(comboBox, node);
+                CheckAdornment(comboBox, node, selectedElement);
+                return comboBox;
+            }
+            catch (Exception exception)
+            {
+                Logger.Log(DebugContext.WiX | DebugContext.Margin | DebugContext.Exceptions, $"Failed to update edit control {id}: {exception}");
                 return null;
             }
         }

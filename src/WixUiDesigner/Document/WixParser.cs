@@ -95,12 +95,21 @@ namespace WixUiDesigner.Document
         public static Visibility GetControlVisibility(this XElement element) =>
             element.HasYesAttribute("Hidden") ? Visibility.Hidden : Visibility.Visible;
         public static bool IsBitmap(this XElement element) => element.HasYesAttribute("Bitmap");
+        public static bool IsComboList(this XElement element) => element.HasYesAttribute("ComboList");
         public static bool IsIcon(this XElement element) => element.HasYesAttribute("Icon");
         public static bool IsImage(this XElement element) => element.HasYesAttribute("Image");
         public static bool IsMultiLine(this XElement element) => element.HasYesAttribute("Multiline");
         public static bool IsRightAligned(this XElement element) => element.HasYesAttribute("RightAligned");
         public static bool IsRightToLeft(this XElement element) => element.HasYesAttribute("RightToLeft");
         public static bool IsPushLike(this XElement element) => element.HasYesAttribute("PushLike");
+        public static bool IsSorted(this XElement element) => element.HasYesAttribute("Sorted");
+
+        public static string[] GetComboBoxItems(this XElement element)
+        {
+            var keys = element.XPathSelectElements("wix:ComboBox/wix:ListItem", WixNamespaceManager).Select(item => (item.Attribute("Text") ?? item.Attribute("Value"))?.Value ?? string.Empty);
+            if (element.IsSorted()) keys = keys.OrderBy(k => k, StringComparer.InvariantCultureIgnoreCase);
+            return keys.ToArray();
+        }
 
         public static ImageSource GetImageSource(this XElement element) => GetImageSource(element.GetTextValue());
         public static ImageSource GetImageSource(string? source)
