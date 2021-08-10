@@ -12,6 +12,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Xml;
@@ -19,6 +20,7 @@ using System.Xml.Linq;
 using System.Xml.XPath;
 using Microsoft.VisualStudio.Threading;
 using WixUiDesigner.Logging;
+using WixUiDesigner.Properties;
 
 #nullable enable
 
@@ -28,7 +30,11 @@ namespace WixUiDesigner.Document
     {
         static JoinableTaskFactory? joinableTaskFactory;
 
-        static readonly BitmapImage MissingImage = new();
+        static readonly ImageSource MissingImage = Imaging.CreateBitmapSourceFromHBitmap(
+            Resources.MissingImage.GetHbitmap(),
+            IntPtr.Zero,
+            Int32Rect.Empty,
+            BitmapSizeOptions.FromWidthAndHeight(Resources.MissingImage.Width, Resources.MissingImage.Height));
 
         public static XmlNamespaceManager WixNamespaceManager { get; }
         static WixParser()
@@ -41,21 +47,6 @@ namespace WixUiDesigner.Document
         {
             joinableTaskFactory = jtf;
             await joinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
-
-            try
-            {
-                MissingImage.BeginInit();
-                MissingImage.UriSource = new("Resources/MissingImage.png", UriKind.Relative);
-                MissingImage.CacheOption = BitmapCacheOption.OnLoad;
-                MissingImage.EndInit();
-                MissingImage.Freeze();
-         
-                await Logger.LogAsync(DebugContext.WiX, "WiX parser loaded images.", cancellationToken);
-            }
-            catch (Exception e)
-            {
-                await Logger.LogErrorAsync($"Failed to initialize WiX parser: {e}", cancellationToken);
-            }
         }
 
         public static XDocument Load(string xml)
