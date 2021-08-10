@@ -361,7 +361,7 @@ namespace WixUiDesigner.Margin
                 //"ListView" => UpdateListViewControl(id, parentControl, node),
                 "MaskedEdit" => UpdateMaskedEditControl(id, parentControl, node),
                 "PathEdit" => UpdatePathEditControl(id, parentControl, node),
-                //"ProgressBar" => UpdateProgressBarControl(id, parentControl, node),
+                "ProgressBar" => UpdateProgressBarControl(id, parentControl, node),
                 "PushButton" => UpdatePushButtonControl(id, parentControl, node),
                 //"RadioButtonGroup" => UpdateRadioButtonGroupControl(id, parentControl, node),
                 "ScrollableText" => UpdateScrollableTextControl(id, parentControl, node),
@@ -448,6 +448,28 @@ namespace WixUiDesigner.Margin
             UpdateEditControl(id, parentControl, node);
         Control? UpdatePathEditControl(string id, Grid parentControl, XElement node) =>
             UpdateEditControl(id, parentControl, node);
+        Control? UpdateProgressBarControl(string id, Grid parentControl, XElement node)
+        {
+            try
+            {
+                Logger.Log(DebugContext.WiX | DebugContext.Margin, $"Updating progress bar control {id}.");
+                var progressBar = parentControl.Children.OfType<ProgressBar>().FirstOrDefault(l => l.Name == id) ?? new ProgressBar
+                {
+                    Name = id,
+                    Padding = default,
+                    Margin = default
+                };
+                progressBar.Value = 50;
+                LayoutControl(progressBar, node);
+                CheckAdornment(progressBar, node, selectedElement);
+                return progressBar;
+            }
+            catch (Exception exception)
+            {
+                Logger.Log(DebugContext.WiX | DebugContext.Margin | DebugContext.Exceptions, $"Failed to update progress bar control {id}: {exception}");
+                return null;
+            }
+        }
         Control? UpdatePushButtonControl(string id, Grid parentControl, XElement node)
         {
             try
@@ -513,7 +535,6 @@ namespace WixUiDesigner.Margin
             return null;
         }
         #endregion
-
         void LayoutControl(Control control, XElement node)
         {
             if (control.Tag is null)
