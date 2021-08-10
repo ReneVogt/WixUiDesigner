@@ -312,7 +312,7 @@ namespace WixUiDesigner.Margin
                                              .Select(node => UpdateControl(parentControl, node))
                                              .Where(control => control is not null)
                                              .ToList();
-                var controlsToRemove = parentControl.Children.Cast<Control>()
+                var controlsToRemove = parentControl.Children.Cast<FrameworkElement>()
                                                     .Where(control => !usedControls.Contains(control))
                                                     .ToList();
                 controlsToRemove.ForEach(control => parentControl.Children.Remove(control));
@@ -327,7 +327,7 @@ namespace WixUiDesigner.Margin
         }
 
         #region Control renderer
-        Control? UpdateControl(Grid parentControl, XElement node)
+        FrameworkElement? UpdateControl(Grid parentControl, XElement node)
         {
             var id = node.GetId();
             if (string.IsNullOrWhiteSpace(id))
@@ -347,7 +347,7 @@ namespace WixUiDesigner.Margin
             return type switch
             {
                 //"Billboard" => UpdateBillboardControl(id, parentControl, node),
-                //"Bitmap" => UpdateBitmapControl(id, parentControl, node),
+                "Bitmap" => UpdateBitmapControl(id, parentControl, node),
                 "CheckBox" => UpdateCheckBoxControl(id, parentControl, node),
                 //"ComboBox" => UpdateComboBoxControl(id, parentControl, node),
                 //"DirectoryCombo" => UpdateDirectoryComboControl(id, parentControl, node),
@@ -355,7 +355,7 @@ namespace WixUiDesigner.Margin
                 "Edit" => UpdateEditControl(id, parentControl, node),
                 //"GroupBox" => UpdateGroupBoxControl(id, parentControl, node),
                 //"Hyperlink" => UpdateHyperlinkControl(id, parentControl, node),
-                //"Icon" => UpdateIconControl(id, parentControl, node),
+                "Icon" => UpdateIconControl(id, parentControl, node),
                 "Line" => UpdateLineControl(id, parentControl, node),
                 //"ListBox" => UpdateListBoxControl(id, parentControl, node),
                 //"ListView" => UpdateListViewControl(id, parentControl, node),
@@ -371,6 +371,26 @@ namespace WixUiDesigner.Margin
                 //"VolumnSelectCombo" => UpdateVolumnSelectComboControl(id, parentControl, node),
                 _ => HandleUnknownControlType(id, type, node)
             };
+        }
+        FrameworkElement? UpdateBitmapControl(string id, Grid parentControl, XElement node)
+        {
+            try
+            {
+                Logger.Log(DebugContext.WiX | DebugContext.Margin, $"Updating bitmap control {id}.");
+                var image = parentControl.Children.OfType<Image>().FirstOrDefault(l => l.Name == id) ?? new Image
+                {
+                    Name = id,
+                    Margin = default
+                };
+                LayoutControl(image, node);
+                CheckAdornment(image, node, selectedElement);
+                return image;
+            }
+            catch (Exception exception)
+            {
+                Logger.Log(DebugContext.WiX | DebugContext.Margin | DebugContext.Exceptions, $"Failed to update bitmap control {id}: {exception}");
+                return null;
+            }
         }
         Control? UpdateCheckBoxControl(string id, Grid parentControl, XElement node)
         {
@@ -420,6 +440,7 @@ namespace WixUiDesigner.Margin
                 return null;
             }
         }
+        FrameworkElement? UpdateIconControl(string id, Grid parentControl, XElement node) => UpdateBitmapControl(id, parentControl, node);
         Control? UpdateLineControl(string id, Grid parentControl, XElement node)
         {
             try
@@ -505,19 +526,19 @@ namespace WixUiDesigner.Margin
             ScrollViewer.SetVerticalScrollBarVisibility(textBox, ScrollBarVisibility.Auto);
             return textBox;
         }
-
-        Control? UpdateTextControl(string id, Grid parentControl, XElement node)
+        FrameworkElement? UpdateTextControl(string id, Grid parentControl, XElement node)
         {
             try
             {
                 Logger.Log(DebugContext.WiX, $"Updating text control {id}.");
-                var label = parentControl.Children.OfType<Label>().FirstOrDefault(l => l.Name == id) ?? new Label
+                var label = parentControl.Children.OfType<TextBlock>().FirstOrDefault(l => l.Name == id) ?? new TextBlock
                 {
                     Name = id,
                     Padding = default,
-                    Margin = default
+                    Margin = default,
+                    TextWrapping = TextWrapping.Wrap
                 };
-                label.Content = node.EvaluateTextValue();
+                label.Text = node.EvaluateTextValue();
                 LayoutControl(label, node);
                 CheckAdornment(label, node, selectedElement);
                 return label;
@@ -535,7 +556,7 @@ namespace WixUiDesigner.Margin
             return null;
         }
         #endregion
-        void LayoutControl(Control control, XElement node)
+        void LayoutControl(FrameworkElement control, XElement node)
         {
             if (control.Tag is null)
                 control.PreviewMouseLeftButtonUp += OnControlClicked;
@@ -553,10 +574,11 @@ namespace WixUiDesigner.Margin
 
             control.Visibility = node.GetControlVisibility();
 
-            control.HorizontalContentAlignment = node.IsRightAligned() ? HorizontalAlignment.Right : HorizontalAlignment.Left;
+            if (control is Control c)
+                c.HorizontalContentAlignment = node.IsRightAligned() ? HorizontalAlignment.Right : HorizontalAlignment.Left;
             control.FlowDirection = node.IsRightToLeft() ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
         }
-        static void CheckAdornment(Control control, XElement node, XElement? selectedElement)
+        static void CheckAdornment(FrameworkElement control, XElement node, XElement? selectedElement)
         {
             var layer = AdornerLayer.GetAdornerLayer(control);
             if (layer is null) return;
