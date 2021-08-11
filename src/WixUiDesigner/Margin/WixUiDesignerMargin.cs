@@ -41,8 +41,11 @@ namespace WixUiDesigner.Margin
         readonly ScaleTransform scaleTransform;
 
         bool isDisposed;
+        bool documentChanged, selectionChanged, wixChanged;
 
         XElement? selectedElement;
+        FrameworkElement? selectedControl;
+        SelectedElementAdorner? selectionAdorner;
 
         bool Horizontal => position is Dock.Top or Dock.Bottom;
         double ViewportSize => Horizontal ? document.WpfTextView.ViewportHeight : document.WpfTextView.ViewportWidth;
@@ -64,7 +67,7 @@ namespace WixUiDesigner.Margin
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
-            this.document = document ?? throw new ArgumentNullException(nameof(document));
+            this.document = document;
             position = WixUiDesignerPackage.Options?.DesignerPosition ?? Options.DefaultDesignerPosition;
 
             updateTimer = new() { Interval = TimeSpan.FromSeconds(WixUiDesignerPackage.Options?.UpdateInterval ?? Options.DefaultUpdateInterval) };
@@ -115,7 +118,7 @@ namespace WixUiDesigner.Margin
         {
             if (isDisposed) return;
             isDisposed = true;
-            Logger.Log(DebugContext.WiX, $"Closing margin for {document.FileName}.");
+            Logger.Log(DebugContext.Margin, $"Closing margin for {document.FileName}.");
             updateTimer.Tick -= OnUpdateTimerTicked;
             updateTimer.Stop();
             document.WpfTextView.VisualElement.Loaded -= OnEditorLoaded;
@@ -141,12 +144,23 @@ namespace WixUiDesigner.Margin
         {
             updateTimer.Stop();
             ThreadHelper.ThrowIfNotOnUIThread();
-            UpdateControls();
+
+            bool updateControls = wixChanged || documentChanged;
+            bool updateSelection = selectionChanged || documentChanged;
+            wixChanged = documentChanged = selectionChanged = false;
+
+            if (updateControls)
+                UpdateControls();
+            if (updateSelection)
+                UpdateSelection();
         }
-        void OnUpdateRequired(object sender, EventArgs e)
+        void OnUpdateRequired(object sender, UpdateRequiredEventArgs e)
         {
             if (isDisposed) return;
             ThreadHelper.ThrowIfNotOnUIThread();
+            documentChanged |= e.DocumentChanged;
+            selectionChanged |= e.SelectionChanged;
+            wixChanged |= e.WixChanged;
             updateTimer.Stop();
             updateTimer.Start();
         }
@@ -291,13 +305,6 @@ namespace WixUiDesigner.Margin
                 scaleTransform.CenterX = dialogGrid.ActualWidth / 2;
                 scaleTransform.CenterY = dialogGrid.ActualHeight / 2;
 
-                var bufferPosition = document.WpfTextView.Caret.Position.BufferPosition;
-                var containingLine = bufferPosition.GetContainingLine();
-                int column = containingLine.Start.Difference(bufferPosition) + 1;
-                int line = containingLine.LineNumber + 1;
-                selectedElement = xml.GetControlAt(line, column);
-                Logger.Log(DebugContext.Margin, $"Selected control: {selectedElement?.GetId() ?? "<null>"}");
-
                 UpdateControls(dialog, dialogNode);
             }
             catch (Exception exception)
@@ -313,6 +320,7 @@ namespace WixUiDesigner.Margin
                                              .Select(node => UpdateControl(parentControl, node))
                                              .Where(control => control is not null)
                                              .ToList();
+
                 var controlsToRemove = parentControl.Children.Cast<FrameworkElement>()
                                                     .Where(control => !usedControls.Contains(control))
                                                     .ToList();
@@ -345,241 +353,168 @@ namespace WixUiDesigner.Margin
                 return null;
             }
 
-            return type switch
+            try
             {
-                //"Billboard" => UpdateBillboardControl(id, parentControl, node),
-                "Bitmap" => UpdateBitmapControl(id, parentControl, node),
-                "CheckBox" => UpdateCheckBoxControl(id, parentControl, node),
-                "ComboBox" => UpdateComboBoxControl(id, parentControl, node),
-                //"DirectoryCombo" => UpdateDirectoryComboControl(id, parentControl, node),
-                //"DirectoryList" => UpdateDirectoryListControl(id, parentControl, node),
-                "Edit" => UpdateEditControl(id, parentControl, node),
-                //"GroupBox" => UpdateGroupBoxControl(id, parentControl, node),
-                //"Hyperlink" => UpdateHyperlinkControl(id, parentControl, node),
-                "Icon" => UpdateIconControl(id, parentControl, node),
-                "Line" => UpdateLineControl(id, parentControl, node),
-                //"ListBox" => UpdateListBoxControl(id, parentControl, node),
-                //"ListView" => UpdateListViewControl(id, parentControl, node),
-                "MaskedEdit" => UpdateMaskedEditControl(id, parentControl, node),
-                "PathEdit" => UpdatePathEditControl(id, parentControl, node),
-                "ProgressBar" => UpdateProgressBarControl(id, parentControl, node),
-                "PushButton" => UpdatePushButtonControl(id, parentControl, node),
-                //"RadioButtonGroup" => UpdateRadioButtonGroupControl(id, parentControl, node),
-                "ScrollableText" => UpdateScrollableTextControl(id, parentControl, node),
-                //"SelectionTree" => UpdateSelectionTreeControl(id, parentControl, node),
-                "Text" => UpdateTextControl(id, parentControl, node),
-                //"VolumnCostList" => UpdateVolumnCostListControl(id, parentControl, node),
-                //"VolumnSelectCombo" => UpdateVolumnSelectComboControl(id, parentControl, node),
-                _ => HandleUnknownControlType(id, type, node)
+                return type switch
+                {
+                    //"Billboard" => UpdateBillboardControl(id, parentControl, node),
+                    "Bitmap" => UpdateBitmapControl(id, parentControl, node),
+                    "CheckBox" => UpdateCheckBoxControl(id, parentControl, node),
+                    "ComboBox" => UpdateComboBoxControl(id, parentControl, node),
+                    //"DirectoryCombo" => UpdateDirectoryComboControl(id, parentControl, node),
+                    //"DirectoryList" => UpdateDirectoryListControl(id, parentControl, node),
+                    "Edit" => UpdateEditControl(id, parentControl, node),
+                    //"GroupBox" => UpdateGroupBoxControl(id, parentControl, node),
+                    //"Hyperlink" => UpdateHyperlinkControl(id, parentControl, node),
+                    "Icon" => UpdateIconControl(id, parentControl, node),
+                    "Line" => UpdateLineControl(id, parentControl, node),
+                    //"ListBox" => UpdateListBoxControl(id, parentControl, node),
+                    //"ListView" => UpdateListViewControl(id, parentControl, node),
+                    "MaskedEdit" => UpdateMaskedEditControl(id, parentControl, node),
+                    "PathEdit" => UpdatePathEditControl(id, parentControl, node),
+                    "ProgressBar" => UpdateProgressBarControl(id, parentControl, node),
+                    "PushButton" => UpdatePushButtonControl(id, parentControl, node),
+                    //"RadioButtonGroup" => UpdateRadioButtonGroupControl(id, parentControl, node),
+                    "ScrollableText" => UpdateScrollableTextControl(id, parentControl, node),
+                    //"SelectionTree" => UpdateSelectionTreeControl(id, parentControl, node),
+                    "Text" => UpdateTextControl(id, parentControl, node),
+                    //"VolumnCostList" => UpdateVolumnCostListControl(id, parentControl, node),
+                    //"VolumnSelectCombo" => UpdateVolumnSelectComboControl(id, parentControl, node),
+                    _ => HandleUnknownControlType(id, type, node)
+                };
+            }
+            catch (Exception exception)
+            {
+                Logger.Log(DebugContext.WiX | DebugContext.Margin | DebugContext.Exceptions, $"Failed to update control {id} of type {type}: {exception}");
+                return null;
+            }
+        }
+        FrameworkElement UpdateBitmapControl(string id, Grid parentControl, XElement node)
+        {
+            var image = parentControl.Children.OfType<Image>().FirstOrDefault(l => l.Name == id) ?? new Image
+            {
+                Name = id,
+                Margin = default,
+                Stretch = Stretch.Fill
             };
+            image.Source = node.GetImageSource();
+            LayoutControl(image, node);
+            return image;
         }
-        FrameworkElement? UpdateBitmapControl(string id, Grid parentControl, XElement node)
+        Control UpdateCheckBoxControl(string id, Grid parentControl, XElement node)
         {
-            try
-            {
-                Logger.Log(DebugContext.WiX | DebugContext.Margin, $"Updating bitmap control {id}.");
-                var image = parentControl.Children.OfType<Image>().FirstOrDefault(l => l.Name == id) ?? new Image
-                {
-                    Name = id,
-                    Margin = default,
-                    Stretch = Stretch.Fill
-                };
-                image.Source = node.GetImageSource();
-                LayoutControl(image, node);
-                CheckAdornment(image, node, selectedElement);
-                return image;
-            }
-            catch (Exception exception)
-            {
-                Logger.Log(DebugContext.WiX | DebugContext.Margin | DebugContext.Exceptions, $"Failed to update bitmap control {id}: {exception}");
-                return null;
-            }
+            var checkBox = node.IsPushLike()
+                               ? parentControl.Children.OfType<ToggleButton>().FirstOrDefault(l => l.Name == id && l.GetType() == typeof(ToggleButton)) ?? new ToggleButton()
+                               : parentControl.Children.OfType<CheckBox>().FirstOrDefault(l => l.Name == id) ?? new CheckBox();
+            checkBox.Name = id;
+            checkBox.Padding = default;
+            checkBox.Margin = default;
+            checkBox.Content = node.EvaluateTextValue();
+            LayoutControl(checkBox, node);
+            return checkBox;
         }
-        Control? UpdateCheckBoxControl(string id, Grid parentControl, XElement node)
+        FrameworkElement UpdateComboBoxControl(string id, Grid parentControl, XElement node)
         {
-            try
+            var comboBox = parentControl.Children.OfType<ComboBox>().FirstOrDefault(l => l.Name == id) ?? new ComboBox
             {
-                Logger.Log(DebugContext.WiX | DebugContext.Margin, $"Updating checkbox control {id}.");
-                var checkBox = node.IsPushLike()
-                                   ? parentControl.Children.OfType<ToggleButton>().FirstOrDefault(l => l.Name == id && l.GetType() == typeof(ToggleButton)) ?? new ToggleButton()
-                                   : parentControl.Children.OfType<CheckBox>().FirstOrDefault(l => l.Name == id) ?? new CheckBox();
-                checkBox.Name = id;
-                checkBox.Padding = default;
-                checkBox.Margin = default;
-                checkBox.Content = node.EvaluateTextValue();
-                LayoutControl(checkBox, node);
-                CheckAdornment(checkBox, node, selectedElement);
-                return checkBox;
+                Name = id
+            };
+            comboBox.IsEditable = !node.IsComboList();
+            string[] items = node.GetComboBoxItems();
+            if (items.Length != comboBox.Items.Count || items.Select((s, i) => (s, i)).Any(x => x.s != (string)comboBox.Items[x.i]))
+            {
+                comboBox.Items.Clear();
+                foreach(var s in items) comboBox.Items.Add(s);
             }
-            catch (Exception exception)
-            {
-                Logger.Log(DebugContext.WiX | DebugContext.Margin | DebugContext.Exceptions, $"Failed to update checkbox control {id}: {exception}");
-                return null;
-            }
-        }
-        FrameworkElement? UpdateComboBoxControl(string id, Grid parentControl, XElement node)
-        {
-            try
-            {
-                Logger.Log(DebugContext.WiX | DebugContext.Margin, $"Updating combobox control {id}.");
-                var comboBox = parentControl.Children.OfType<ComboBox>().FirstOrDefault(l => l.Name == id) ?? new ComboBox
-                {
-                    Name = id,
-                };
-                comboBox.IsEditable = !node.IsComboList();
-                string[] items = node.GetComboBoxItems();
-                if (items.Length != comboBox.Items.Count || items.Select((s, i) => (s, i)).Any(x => x.s != (string)comboBox.Items[x.i]))
-                {
-                    comboBox.Items.Clear();
-                    foreach(var s in items) comboBox.Items.Add(s);
-                }
 
-                if (comboBox.Items.Count > 0 && comboBox.SelectedIndex < 0) comboBox.SelectedIndex = 0;
+            if (comboBox.Items.Count > 0 && comboBox.SelectedIndex < 0) comboBox.SelectedIndex = 0;
 
-                LayoutControl(comboBox, node);
-                CheckAdornment(comboBox, node, selectedElement);
-                return comboBox;
-            }
-            catch (Exception exception)
-            {
-                Logger.Log(DebugContext.WiX | DebugContext.Margin | DebugContext.Exceptions, $"Failed to update edit control {id}: {exception}");
-                return null;
-            }
+            LayoutControl(comboBox, node);
+            return comboBox;
         }
-        Control? UpdateEditControl(string id, Grid parentControl, XElement node)
+        TextBox UpdateEditControl(string id, Grid parentControl, XElement node)
         {
-            try
+            var textBox = parentControl.Children.OfType<TextBox>().FirstOrDefault(l => l.Name == id) ?? new TextBox
             {
-                Logger.Log(DebugContext.WiX | DebugContext.Margin, $"Updating edit control {id}.");
-                var textBox = parentControl.Children.OfType<TextBox>().FirstOrDefault(l => l.Name == id) ?? new TextBox
-                {
-                    Name = id,
-                    Padding = default,
-                    Margin = default
-                };
-                textBox.Text = node.EvaluateTextValue();
-                ScrollViewer.SetHorizontalScrollBarVisibility(textBox, ScrollBarVisibility.Hidden);
-                ScrollViewer.SetVerticalScrollBarVisibility(textBox, node.IsMultiLine() ? ScrollBarVisibility.Auto : ScrollBarVisibility.Hidden);
-                textBox.AcceptsReturn = true;
-                textBox.TextWrapping = TextWrapping.Wrap;
-                LayoutControl(textBox, node);
-                CheckAdornment(textBox, node, selectedElement);
-                return textBox;
-            }
-            catch (Exception exception)
-            {
-                Logger.Log(DebugContext.WiX | DebugContext.Margin | DebugContext.Exceptions, $"Failed to update edit control {id}: {exception}");
-                return null;
-            }
+                Name = id,
+                Padding = default,
+                Margin = default
+            };
+            textBox.Text = node.EvaluateTextValue();
+            ScrollViewer.SetHorizontalScrollBarVisibility(textBox, ScrollBarVisibility.Hidden);
+            ScrollViewer.SetVerticalScrollBarVisibility(textBox, node.IsMultiLine() ? ScrollBarVisibility.Auto : ScrollBarVisibility.Hidden);
+            textBox.AcceptsReturn = true;
+            textBox.TextWrapping = TextWrapping.Wrap;
+            LayoutControl(textBox, node);
+            return textBox;
         }
-        FrameworkElement? UpdateIconControl(string id, Grid parentControl, XElement node) => UpdateBitmapControl(id, parentControl, node);
-        Control? UpdateLineControl(string id, Grid parentControl, XElement node)
+        FrameworkElement UpdateIconControl(string id, Grid parentControl, XElement node) => UpdateBitmapControl(id, parentControl, node);
+        Control UpdateLineControl(string id, Grid parentControl, XElement node)
         {
-            try
+            var line = parentControl.Children.OfType<Separator>().FirstOrDefault(l => l.Name == id) ?? new Separator
             {
-                Logger.Log(DebugContext.WiX | DebugContext.Margin, $"Updating line control {id}.");
-
-                var line = parentControl.Children.OfType<Separator>().FirstOrDefault(l => l.Name == id) ?? new Separator
-                {
-                    Name = id,
-                    Padding = default,
-                    Margin = default
-                };
-                LayoutControl(line, node);
-                line.Height = Math.Max(line.Height, 1);
-                line.Width = Math.Max(line.Width, 1);
-                CheckAdornment(line, node, selectedElement);
-                return line;
-            }
-            catch (Exception exception)
-            {
-                Logger.Log(DebugContext.WiX | DebugContext.Margin | DebugContext.Exceptions, $"Failed to update button control {id}: {exception}");
-                return null;
-            }
+                Name = id,
+                Padding = default,
+                Margin = default
+            };
+            LayoutControl(line, node);
+            line.Height = Math.Max(line.Height, 1);
+            line.Width = Math.Max(line.Width, 1);
+            return line;
         }
-        Control? UpdateMaskedEditControl(string id, Grid parentControl, XElement node) =>
+        Control UpdateMaskedEditControl(string id, Grid parentControl, XElement node) =>
             UpdateEditControl(id, parentControl, node);
-        Control? UpdatePathEditControl(string id, Grid parentControl, XElement node) =>
+        Control UpdatePathEditControl(string id, Grid parentControl, XElement node) =>
             UpdateEditControl(id, parentControl, node);
-        Control? UpdateProgressBarControl(string id, Grid parentControl, XElement node)
+        Control UpdateProgressBarControl(string id, Grid parentControl, XElement node)
         {
-            try
+            var progressBar = parentControl.Children.OfType<ProgressBar>().FirstOrDefault(l => l.Name == id) ?? new ProgressBar
             {
-                Logger.Log(DebugContext.WiX | DebugContext.Margin, $"Updating progress bar control {id}.");
-                var progressBar = parentControl.Children.OfType<ProgressBar>().FirstOrDefault(l => l.Name == id) ?? new ProgressBar
-                {
-                    Name = id,
-                    Padding = default,
-                    Margin = default
-                };
-                progressBar.Value = 50;
-                LayoutControl(progressBar, node);
-                CheckAdornment(progressBar, node, selectedElement);
-                return progressBar;
-            }
-            catch (Exception exception)
-            {
-                Logger.Log(DebugContext.WiX | DebugContext.Margin | DebugContext.Exceptions, $"Failed to update progress bar control {id}: {exception}");
-                return null;
-            }
+                Name = id,
+                Padding = default,
+                Margin = default
+            };
+            progressBar.Value = 50;
+            LayoutControl(progressBar, node);
+            return progressBar;
         }
-        Control? UpdatePushButtonControl(string id, Grid parentControl, XElement node)
+        Control UpdatePushButtonControl(string id, Grid parentControl, XElement node)
         {
-            try
-            {
-                Logger.Log(DebugContext.WiX | DebugContext.Margin, $"Updating button control {id}.");
-                if (node.IsBitmap())
-                    throw Errors.BitmapButtonNotSupported();
-                if (node.IsIcon())
-                    throw Errors.IconButtonNotSupported();
-                if (node.IsImage())
-                    throw Errors.BitmapButtonNotSupported();
+            if (node.IsBitmap())
+                throw Errors.BitmapButtonNotSupported();
+            if (node.IsIcon())
+                throw Errors.IconButtonNotSupported();
+            if (node.IsImage())
+                throw Errors.BitmapButtonNotSupported();
 
-                var button = parentControl.Children.OfType<Button>().FirstOrDefault(l => l.Name == id) ?? new Button
-                {
-                    Name = id,
-                    Padding = default,
-                    Margin = default
-                };
-                button.Content = node.EvaluateTextValue();
-                LayoutControl(button, node);
-                CheckAdornment(button, node, selectedElement);
-                return button;
-            }
-            catch (Exception exception)
+            var button = parentControl.Children.OfType<Button>().FirstOrDefault(l => l.Name == id) ?? new Button
             {
-                Logger.Log(DebugContext.WiX | DebugContext.Margin | DebugContext.Exceptions, $"Failed to update button control {id}: {exception}");
-                return null;
-            }
+                Name = id,
+                Padding = default,
+                Margin = default
+            };
+            button.Content = node.EvaluateTextValue();
+            LayoutControl(button, node);
+            return button;
         }
-        Control? UpdateScrollableTextControl(string id, Grid parentControl, XElement node)
+        TextBox UpdateScrollableTextControl(string id, Grid parentControl, XElement node)
         {
-            if (UpdateEditControl(id, parentControl, node) is not TextBox textBox) return null;
+            var textBox = UpdateEditControl(id, parentControl, node);
             ScrollViewer.SetVerticalScrollBarVisibility(textBox, ScrollBarVisibility.Auto);
             return textBox;
         }
         FrameworkElement? UpdateTextControl(string id, Grid parentControl, XElement node)
         {
-            try
+            var label = parentControl.Children.OfType<TextBlock>().FirstOrDefault(l => l.Name == id) ?? new TextBlock
             {
-                Logger.Log(DebugContext.WiX, $"Updating text control {id}.");
-                var label = parentControl.Children.OfType<TextBlock>().FirstOrDefault(l => l.Name == id) ?? new TextBlock
-                {
-                    Name = id,
-                    Padding = default,
-                    Margin = default,
-                    TextWrapping = TextWrapping.Wrap
-                };
-                label.Text = node.EvaluateTextValue();
-                LayoutControl(label, node);
-                CheckAdornment(label, node, selectedElement);
-                return label;
-            }
-            catch (Exception exception)
-            {
-                Logger.Log(DebugContext.WiX|DebugContext.Margin|DebugContext.Exceptions, $"Failed to update text control {id}: {exception}");
-                return null;
-            }
+                Name = id,
+                Padding = default,
+                Margin = default,
+                TextWrapping = TextWrapping.Wrap
+            };
+            label.Text = node.EvaluateTextValue();
+            LayoutControl(label, node);
+            return label;
         }
         static Control? HandleUnknownControlType(string id, string type, XElement node)
         {
@@ -588,6 +523,7 @@ namespace WixUiDesigner.Margin
             return null;
         }
         #endregion
+
         void LayoutControl(FrameworkElement control, XElement node)
         {
             if (control.Tag is null)
@@ -610,15 +546,37 @@ namespace WixUiDesigner.Margin
                 c.HorizontalContentAlignment = node.IsRightAligned() ? HorizontalAlignment.Right : HorizontalAlignment.Left;
             control.FlowDirection = node.IsRightToLeft() ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
         }
-        static void CheckAdornment(FrameworkElement control, XElement node, XElement? selectedElement)
+        void UpdateSelection()
         {
-            var layer = AdornerLayer.GetAdornerLayer(control);
-            if (layer is null) return;
-            var adorner = layer.GetAdorners(control)?.OfType<SelectedElementAdorner>().SingleOrDefault();
-            if (node == selectedElement && adorner is null)
-                layer.Add(new SelectedElementAdorner(control));
-            if (node != selectedElement && adorner is not null)
-                layer.Remove(adorner);
+            var bufferPosition = document.WpfTextView.Caret.Position.BufferPosition;
+            var containingLine = bufferPosition.GetContainingLine();
+            int column = containingLine.Start.Difference(bufferPosition) + 1;
+            int line = containingLine.LineNumber + 1;
+            var nextSelectedElement = document.Xml.GetControlAt(line, column);
+            if (nextSelectedElement == selectedElement) return;
+
+            string id = nextSelectedElement?.GetId() ?? string.Empty;
+            Logger.Log(DebugContext.Margin, $"Selected control in {document.FileName} changed to ({id}).");
+
+            selectedElement = nextSelectedElement;
+
+            var control = selectedElement is null ? null : FindByTag(dialog, selectedElement);
+            if (control == selectedControl) return;
+
+            if (selectedControl is not null && AdornerLayer.GetAdornerLayer(selectedControl) is {} oldLayer)
+                oldLayer.Remove(selectionAdorner!);
+            selectedControl = control;
+            selectionAdorner = null;
+            if (selectedControl is null || AdornerLayer.GetAdornerLayer(selectedControl) is not {} nextLayer) return;
+            selectionAdorner = new(selectedControl);
+            nextLayer.Add(selectionAdorner);
         }
+        static FrameworkElement? FindByTag(FrameworkElement parent, object tag) => parent.Tag == tag
+                                                                                ? parent
+                                                                                : Enumerable.Range(0, VisualTreeHelper.GetChildrenCount(parent))
+                                                                                            .Select(i => VisualTreeHelper.GetChild(parent, i))
+                                                                                            .OfType<FrameworkElement>()
+                                                                                            .Select(child => FindByTag(child, tag))
+                                                                                            .FirstOrDefault(child => child is not null);
     }
 }

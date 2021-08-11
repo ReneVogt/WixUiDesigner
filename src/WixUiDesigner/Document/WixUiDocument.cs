@@ -16,7 +16,7 @@ namespace WixUiDesigner.Document
 {
     sealed class WixUiDocument : IDisposable
     {
-        public event EventHandler? UpdateRequired;
+        public event EventHandler<UpdateRequiredEventArgs>? UpdateRequired;
         public event EventHandler? Closed;
 
         bool disposed;
@@ -37,7 +37,7 @@ namespace WixUiDesigner.Document
                 }
                 catch (Exception exception)
                 {
-                    Logger.Log(DebugContext.Document | DebugContext.Exceptions, $"Failed to parse {FileName}: {exception}");
+                    Logger.Log(DebugContext.Document | DebugContext.WiX | DebugContext.Exceptions, $"Failed to parse {FileName}: {exception}");
                 }
 
                 return xml;
@@ -68,9 +68,9 @@ namespace WixUiDesigner.Document
         void OnTextChanged(object sender, EventArgs e)
         {
             xmlChanged = true;
-            UpdateRequired?.Invoke(this, e);
+            UpdateRequired?.Invoke(this, UpdateRequiredEventArgs.DocumentChangedArgs(e));
         }
-        void OnCaretPositionChanged(object sender, CaretPositionChangedEventArgs e) => UpdateRequired?.Invoke(this, e);
+        void OnCaretPositionChanged(object sender, CaretPositionChangedEventArgs e) => UpdateRequired?.Invoke(this, UpdateRequiredEventArgs.SelectionChangedArgs(e));
         void OnClosed(object sender, EventArgs e) => Dispose();
 
         public static WixUiDocument? Get(IWpfTextView wpfTextView)
@@ -86,7 +86,7 @@ namespace WixUiDesigner.Document
                 var xml = WixParser.Load(wpfTextView.TextBuffer.CurrentSnapshot.GetText());
                 if (!xml.IsWixUiDocument())
                 {
-                    Logger.Log(DebugContext.Document, $"{document.FilePath} is not a valid WiX UI document.");
+                    Logger.Log(DebugContext.Document | DebugContext.WiX, $"{document.FilePath} is not a valid WiX UI document.");
                     return null;
                 }
 
@@ -95,7 +95,7 @@ namespace WixUiDesigner.Document
             }
             catch (Exception exception)
             {
-                Logger.Log(DebugContext.Document | DebugContext.Exceptions, $"Failed to parse document {document.FilePath}: {exception}");
+                Logger.Log(DebugContext.Document | DebugContext.WiX | DebugContext.Exceptions, $"Failed to parse document {document.FilePath}: {exception}");
                 return null;
             }
         }
