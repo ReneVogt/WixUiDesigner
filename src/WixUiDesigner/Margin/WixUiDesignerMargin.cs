@@ -5,7 +5,9 @@
  */
 
 using System;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -432,19 +434,50 @@ namespace WixUiDesigner.Margin
             LayoutControl(comboBox, node);
             return comboBox;
         }
-        TextBox UpdateEditControl(string id, Grid parentControl, XElement node)
+        RichTextBox UpdateEditControl(string id, Grid parentControl, XElement node)
         {
-            var textBox = parentControl.Children.OfType<TextBox>().FirstOrDefault(l => l.Name == id) ?? new TextBox
+            var textBox = parentControl.Children.OfType<RichTextBox>().FirstOrDefault(l => l.Name == id) ?? new RichTextBox
             {
                 Name = id,
                 Padding = default,
                 Margin = default
             };
-            textBox.Text = node.EvaluateTextValue();
+            string content = node.EvaluateTextValue() ?? Environment.NewLine;
+            if (content != textBox.Document.Tag?.ToString())
+            {
+                textBox.Document.Tag = content;
+                var contentBytes = Encoding.UTF8.GetBytes(content);
+                using var stream = new MemoryStream(contentBytes);
+                stream.Position = 0;
+                textBox.SelectAll();
+                try
+                {
+                    textBox.Selection.Load(stream, DataFormats.Rtf);
+                }
+                catch (Exception exception)
+                {
+                    Logger.Log(DebugContext.Margin | DebugContext.Exceptions, $"Failed to parse RTF for control {id} in {document.FileName}: {exception}.");
+                    try
+                    {
+                        textBox.Selection.Load(stream, DataFormats.UnicodeText);
+                    }
+                    catch (Exception e2)
+                    {
+                        Logger.Log(DebugContext.Margin | DebugContext.Exceptions, $"Failed to parse unicode text for control {id} in {document.FileName}: {e2}.");
+                        try
+                        {
+                            textBox.Selection.Load(stream, DataFormats.Text);
+                        }
+                        catch (Exception e3)
+                        {
+                            Logger.Log(DebugContext.Margin | DebugContext.Exceptions, $"Failed to parse text for control {id} in {document.FileName}: {e3}.");
+                        }
+                    }
+                }
+            }
             ScrollViewer.SetHorizontalScrollBarVisibility(textBox, ScrollBarVisibility.Hidden);
             ScrollViewer.SetVerticalScrollBarVisibility(textBox, node.IsMultiLine() ? ScrollBarVisibility.Auto : ScrollBarVisibility.Hidden);
             textBox.AcceptsReturn = true;
-            textBox.TextWrapping = TextWrapping.Wrap;
             LayoutControl(textBox, node);
             return textBox;
         }
@@ -497,7 +530,7 @@ namespace WixUiDesigner.Margin
             LayoutControl(button, node);
             return button;
         }
-        TextBox UpdateScrollableTextControl(string id, Grid parentControl, XElement node)
+        RichTextBox UpdateScrollableTextControl(string id, Grid parentControl, XElement node)
         {
             var textBox = UpdateEditControl(id, parentControl, node);
             ScrollViewer.SetVerticalScrollBarVisibility(textBox, ScrollBarVisibility.Auto);

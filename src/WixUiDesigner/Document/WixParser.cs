@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -30,11 +31,7 @@ namespace WixUiDesigner.Document
     {
         static JoinableTaskFactory? joinableTaskFactory;
 
-        static readonly ImageSource MissingImage = Imaging.CreateBitmapSourceFromHBitmap(
-            Resources.MissingImage.GetHbitmap(),
-            IntPtr.Zero,
-            Int32Rect.Empty,
-            BitmapSizeOptions.FromWidthAndHeight(Resources.MissingImage.Width, Resources.MissingImage.Height));
+        static readonly ImageSource MissingImage = Resources.MissingImage.ToImageSource();
 
         public static XmlNamespaceManager WixNamespaceManager { get; }
         static WixParser()
@@ -123,5 +120,11 @@ namespace WixUiDesigner.Document
 
         public static (int line, int column) GetPosition(this IXmlLineInfo? element) =>
             element?.HasLineInfo() == true ? (element.LineNumber, element.LinePosition) : (-1, -1);
+
+        static ImageSource ToImageSource(this Bitmap bitmap) => Imaging.CreateBitmapSourceFromHBitmap(
+            bitmap.GetHbitmap(),
+            IntPtr.Zero,
+            Int32Rect.Empty,
+            BitmapSizeOptions.FromEmptyOptions());
     }
 }
