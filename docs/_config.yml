@@ -1,0 +1,7 @@
+theme: jekyll-theme-minimal
+title: WiX UI Simulator
+author: Ren&eacute; Vogt
+description: Simulating the layout of WiX UI dialogs at design time.
+#url: https://renevogt.github.io/WixUiSimulator/
+baseurl: 
+markdown: kramdown

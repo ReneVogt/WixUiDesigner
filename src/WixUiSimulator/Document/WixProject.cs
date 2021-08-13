@@ -20,6 +20,8 @@ namespace WixUiSimulator.Document
 
         internal Project Project { get; }
 
+        //internal event EventHandler? ResourcesChanged;
+
         internal WixProject(Project project) => Project = project;
 
         internal static WixProject? Get(ProjectItem projectItem)
@@ -32,6 +34,15 @@ namespace WixUiSimulator.Document
                 Logger.Log(DebugContext.Document, $"{projectItem.Document.FullName} is part of project {project.Name} which is not a WiX project (kind: {project.Kind}).");
                 return null;
             }
+            if (project.CodeModel is {CodeElements: var elements})
+            {
+                Logger.Log(DebugContext.Document, $"Code elements: {string.Join(", ", elements)}");
+            }
+            else
+            {
+                Logger.Log(DebugContext.Document, "NO CODE MODEL!");
+            }
+            
             if (projects.TryGetValue(project, out var wixProject)) return wixProject;
             wixProject = new(project);
             projects[project] = wixProject;
