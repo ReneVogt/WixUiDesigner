@@ -6,6 +6,7 @@
 
 using System;
 using System.Xml.Linq;
+using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using WixUiSimulator.Logging;
@@ -25,6 +26,7 @@ namespace WixUiSimulator.Document
         
         public string FileName { get; }
         public IWpfTextView WpfTextView { get; }
+        public WixProject WixProject { get; }
         public XDocument Xml
         {
             get
@@ -44,11 +46,12 @@ namespace WixUiSimulator.Document
             }
         }
 
-        WixUiDocument(string fileName, IWpfTextView wpfTextView, XDocument xml)
+        WixUiDocument(string fileName, IWpfTextView wpfTextView, XDocument xml, WixProject wixProject)
         {
             FileName = fileName;
             WpfTextView = wpfTextView;
             this.xml = xml;
+            WixProject = wixProject;
 
             WpfTextView.TextBuffer.Changed += OnTextChanged;
             WpfTextView.Caret.PositionChanged += OnCaretPositionChanged;
@@ -57,7 +60,7 @@ namespace WixUiSimulator.Document
         public void Dispose()
         {
             if (disposed) return;
-            Logger.Log(DebugContext.WiX, $"Closing document {FileName}.");
+            Logger.Log(DebugContext.Document, $"Closing document {FileName}.");
             disposed = true;
             Closed?.Invoke(this, EventArgs.Empty);
             WpfTextView.TextBuffer.Changed -= OnTextChanged;
@@ -75,6 +78,8 @@ namespace WixUiSimulator.Document
 
         public static WixUiDocument? Get(IWpfTextView wpfTextView)
         {
+            ThreadHelper.ThrowIfNotOnUIThread();
+
             if (!wpfTextView.TextBuffer.Properties.TryGetProperty<ITextDocument>(typeof(ITextDocument), out var document))
             {
                 Logger.Log(DebugContext.Document, "Could not determine document from WpfTextView!");
@@ -90,8 +95,15 @@ namespace WixUiSimulator.Document
                     return null;
                 }
 
-                Logger.Log(DebugContext.Document, $"Creating document entry for {document.FilePath}.");
-                return wpfTextView.Properties.GetOrCreateSingletonProperty(() => new WixUiDocument(document.FilePath, wpfTextView, xml));
+                var wixProject = WixProject.Get(document.FilePath);
+                if (wixProject is null)
+                {
+                    Logger.Log(DebugContext.Document | DebugContext.WiX, $"{document.FilePath} is not part of a WiX project.");
+                    return null;
+                }
+
+                Logger.Log(DebugContext.Document, $"Creating document entry for {document.FilePath}, part of project {wixProject.Project.Name}.");
+                return wpfTextView.Properties.GetOrCreateSingletonProperty(() => new WixUiDocument(document.FilePath, wpfTextView, xml, wixProject));
             }
             catch (Exception exception)
             {

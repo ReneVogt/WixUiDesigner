@@ -20,5 +20,8 @@ namespace WixUiSimulator
 
         internal const string ProductName = "WiX UI Simulator";
         internal const string PackageName = "WixUiSimulator";
+
+        internal const string WixProjectKindGuidString = "930c7802-8a8c-48f9-8165-68863bccd9dd";
+        internal static Guid WixProjectKindGuid { get; } = new Guid(WixProjectKindGuidString);
     }
 }

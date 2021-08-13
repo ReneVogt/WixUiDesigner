@@ -11,7 +11,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -19,9 +18,14 @@ using System.Windows.Media.Imaging;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.XPath;
+using EnvDTE;
+using EnvDTE80;
+using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Threading;
 using WixUiSimulator.Logging;
 using WixUiSimulator.Properties;
+using Task = System.Threading.Tasks.Task;
 
 #nullable enable
 
@@ -29,8 +33,6 @@ namespace WixUiSimulator.Document
 {
     static class WixParser
     {
-        static JoinableTaskFactory? joinableTaskFactory;
-
         static readonly ImageSource MissingImage = Resources.MissingImage.ToImageSource();
 
         public static XmlNamespaceManager WixNamespaceManager { get; }
@@ -38,12 +40,6 @@ namespace WixUiSimulator.Document
         {
             WixNamespaceManager = new(new NameTable());
             WixNamespaceManager.AddNamespace("wix", "http://schemas.microsoft.com/wix/2006/wi");
-        }
-
-        public static async Task InitializeAsync(JoinableTaskFactory jtf, CancellationToken cancellationToken)
-        {
-            joinableTaskFactory = jtf;
-            await joinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
         }
 
         public static XDocument Load(string xml)
