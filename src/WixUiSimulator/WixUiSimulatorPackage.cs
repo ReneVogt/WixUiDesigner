@@ -68,7 +68,7 @@ namespace WixUiSimulator
 
             try
             {
-                await WixProject.InitializeAsync(this, JoinableTaskFactory, cancellationToken);
+                await WixParser.InitializeAsync(this, JoinableTaskFactory, cancellationToken);
                 await Logger.LogAsync(DebugContext.Package, "Package initialized.", cancellationToken);
             }
             catch (Exception ex)

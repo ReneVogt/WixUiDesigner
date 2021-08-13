@@ -35,11 +35,25 @@ namespace WixUiSimulator.Document
     {
         static readonly ImageSource MissingImage = Resources.MissingImage.ToImageSource();
 
+        static DTE2? dte;
+
         public static XmlNamespaceManager WixNamespaceManager { get; }
         static WixParser()
         {
             WixNamespaceManager = new(new NameTable());
             WixNamespaceManager.AddNamespace("wix", "http://schemas.microsoft.com/wix/2006/wi");
+        }
+
+        internal static async Task InitializeAsync(IServiceProvider serviceProvider, JoinableTaskFactory joinableTaskFactory, CancellationToken cancellationToken)
+        {
+            await joinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+            dte = (DTE2?)serviceProvider?.GetService(typeof(SDTE));
+        }
+
+        internal static ProjectItem? GetProjectItem(string fileName)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            return dte?.Solution?.FindProjectItem(fileName);
         }
 
         public static XDocument Load(string xml)
