@@ -552,7 +552,7 @@ namespace WixUiSimulator.Margin
         static Control? HandleUnknownControlType(string id, string type, XElement node)
         {
             var (line, column) = node.GetPosition();
-            Logger.Log(DebugContext.WiX, $"Control {id} at ({line}, {column}) is of type {type} which is not supported!");
+            Logger.Log(DebugContext.WiX | DebugContext.Margin, $"Control {id} at ({line}, {column}) is of type {type} which is not supported!");
             return null;
         }
         #endregion

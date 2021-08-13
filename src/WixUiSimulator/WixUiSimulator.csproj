@@ -61,6 +61,7 @@
     <Compile Include="Defines.cs" />
     <Compile Include="Document\UpdateRequiredEventArgs.cs" />
     <Compile Include="Document\WixParser.cs" />
+    <Compile Include="Document\WixProject.cs" />
     <Compile Include="Document\WixUiDocument.cs" />
     <Compile Include="Exceptions\Errors.cs" />
     <Compile Include="Exceptions\WixException.cs" />
