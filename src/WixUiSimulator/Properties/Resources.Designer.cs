@@ -69,5 +69,22 @@ namespace WixUiSimulator.Properties {
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
+        
+        /// <summary>
+        ///   Sucht eine lokalisierte Zeichenfolge, die &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+        ///&lt;!-- Copyright (c) .NET Foundation and contributors. All rights reserved. Licensed under the Microsoft Reciprocal License. See LICENSE.TXT file in the project root for full license information. --&gt;
+        ///
+        ///
+        ///&lt;WixLocalization Culture=&quot;en-US&quot; Codepage=&quot;1252&quot; xmlns=&quot;http://schemas.microsoft.com/wix/2006/localization&quot;&gt;
+        ///    &lt;!-- _locID@Culture=&quot;en-US&quot; _locComment=&quot;American English&quot; --&gt;
+        ///    &lt;!-- _locID@Codepage=&quot;1252&quot; _locComment=&quot;Windows-1252&quot; --&gt;
+        ///
+        ///    &lt;String Id=&quot;WixUIBack [Rest der Zeichenfolge wurde abgeschnitten]&quot;; ähnelt.
+        /// </summary>
+        internal static string WixUI_en_us {
+            get {
+                return ResourceManager.GetString("WixUI_en_us", resourceCulture);
+            }
+        }
     }
 }

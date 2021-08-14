@@ -34,6 +34,8 @@ namespace WixUiSimulator.Document
     static class WixParser
     {
         static readonly ImageSource MissingImage = Resources.MissingImage.ToImageSource();
+        
+        public static Dictionary<string, string> InternalLocalization { get; }
 
         static DTE2? dte;
 
@@ -42,6 +44,8 @@ namespace WixUiSimulator.Document
         {
             WixNamespaceManager = new(new NameTable());
             WixNamespaceManager.AddNamespace("wix", "http://schemas.microsoft.com/wix/2006/wi");
+            WixNamespaceManager.AddNamespace("wxl", "http://schemas.microsoft.com/wix/2006/localization");
+            InternalLocalization = XDocument.Parse(Resources.WixUI_en_us).GetLocalizedStrings();
         }
 
         internal static async Task InitializeAsync(IServiceProvider serviceProvider, JoinableTaskFactory joinableTaskFactory, CancellationToken cancellationToken)
@@ -136,5 +140,12 @@ namespace WixUiSimulator.Document
             IntPtr.Zero,
             Int32Rect.Empty,
             BitmapSizeOptions.FromEmptyOptions());
+
+        public static Dictionary<string, string> GetLocalizedStrings(this XDocument document) => document
+            .XPathSelectElements("/wxl:WixLocalization/wxl:String", WixNamespaceManager)
+            .Select(node => (key: node.Attribute("Id")?.Value, value: node.Value))
+            .Where(kvp => !string.IsNullOrWhiteSpace(kvp.key))
+            .GroupBy(kvp => kvp.key)
+            .ToDictionary(kvp => kvp.Key!, kvp => kvp.Last().value);
     }
 }
