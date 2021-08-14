@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Xml.Linq;
 using EnvDTE;
 using Microsoft.VisualStudio.Shell;
 using WixUiSimulator.Logging;
@@ -18,11 +19,18 @@ namespace WixUiSimulator.Document
     {
         static readonly Dictionary<Project, WixProject> projects = new ();
 
-        internal Project Project { get; }
+        public Project Project { get; }
 
-        //internal event EventHandler? ResourcesChanged;
+        //public event EventHandler? ResourcesChanged;
 
-        internal WixProject(Project project) => Project = project;
+        WixProject(Project project) => Project = project;
+
+        public string GetTextForControl(XElement node, out WixFont font) => ParseFormatted(node.GetTextValue() ?? string.Empty, out font);
+        public string ParseFormatted(string formatted, out WixFont font)
+        {
+            font = WixFont.DefaultWixFont;
+            return formatted;
+        }
 
         internal static WixProject? Get(ProjectItem projectItem)
         {

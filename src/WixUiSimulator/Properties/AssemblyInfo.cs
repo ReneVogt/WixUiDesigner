@@ -21,3 +21,8 @@ using System.Runtime.InteropServices;
 [assembly: NeutralResourcesLanguage("en")]
 [assembly: ComVisible(false)]
 [assembly: AssemblyVersion("0.2.0.0")]
+
+namespace System.Runtime.CompilerServices
+{
+    static class IsExternalInit { }
+}
