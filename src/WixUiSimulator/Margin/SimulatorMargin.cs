@@ -23,6 +23,16 @@ using Microsoft.VisualStudio.Text.Editor;
 using WixUiSimulator.Document;
 using WixUiSimulator.Exceptions;
 using WixUiSimulator.Logging;
+using Button = System.Windows.Controls.Button;
+using CheckBox = System.Windows.Controls.CheckBox;
+using ComboBox = System.Windows.Controls.ComboBox;
+using Control = System.Windows.Controls.Control;
+using DataFormats = System.Windows.DataFormats;
+using FlowDirection = System.Windows.FlowDirection;
+using HorizontalAlignment = System.Windows.HorizontalAlignment;
+using Label = System.Windows.Controls.Label;
+using ProgressBar = System.Windows.Controls.ProgressBar;
+using RichTextBox = System.Windows.Controls.RichTextBox;
 
 #nullable enable
 
@@ -302,7 +312,7 @@ namespace WixUiSimulator.Margin
 
                 caption.Name = dialog.Name + "caption";
                 caption.Width = width;
-                caption.Content = dialogNode.EvaluateAttribute("Title");
+                caption.Content = dialogNode.GetAttributeValue("Title");
 
                 scaleTransform.CenterX = dialogGrid.ActualWidth / 2;
                 scaleTransform.CenterY = dialogGrid.ActualHeight / 2;
@@ -411,7 +421,8 @@ namespace WixUiSimulator.Margin
             checkBox.Name = id;
             checkBox.Padding = default;
             checkBox.Margin = default;
-            checkBox.Content = node.EvaluateTextValue();
+            checkBox.Content = document.WixProject.GetTextForControl(node, out var font);
+            font.SetToFrameworkElement(checkBox);
             LayoutControl(checkBox, node);
             return checkBox;
         }
@@ -434,47 +445,16 @@ namespace WixUiSimulator.Margin
             LayoutControl(comboBox, node);
             return comboBox;
         }
-        RichTextBox UpdateEditControl(string id, Grid parentControl, XElement node)
+        TextBox UpdateEditControl(string id, Grid parentControl, XElement node)
         {
-            var textBox = parentControl.Children.OfType<RichTextBox>().FirstOrDefault(l => l.Name == id) ?? new RichTextBox
+            var textBox = parentControl.Children.OfType<TextBox>().FirstOrDefault(l => l.Name == id) ?? new TextBox
             {
                 Name = id,
                 Padding = default,
                 Margin = default
             };
-            string content = node.EvaluateTextValue() ?? Environment.NewLine;
-            if (content != textBox.Document.Tag?.ToString())
-            {
-                textBox.Document.Tag = content;
-                var contentBytes = Encoding.UTF8.GetBytes(content);
-                using var stream = new MemoryStream(contentBytes);
-                stream.Position = 0;
-                textBox.SelectAll();
-                try
-                {
-                    textBox.Selection.Load(stream, DataFormats.Rtf);
-                }
-                catch (Exception exception)
-                {
-                    Logger.Log(DebugContext.Margin | DebugContext.Exceptions, $"Failed to parse RTF for control {id} in {document.FileName}: {exception}.");
-                    try
-                    {
-                        textBox.Selection.Load(stream, DataFormats.UnicodeText);
-                    }
-                    catch (Exception e2)
-                    {
-                        Logger.Log(DebugContext.Margin | DebugContext.Exceptions, $"Failed to parse unicode text for control {id} in {document.FileName}: {e2}.");
-                        try
-                        {
-                            textBox.Selection.Load(stream, DataFormats.Text);
-                        }
-                        catch (Exception e3)
-                        {
-                            Logger.Log(DebugContext.Margin | DebugContext.Exceptions, $"Failed to parse text for control {id} in {document.FileName}: {e3}.");
-                        }
-                    }
-                }
-            }
+            textBox.Text = document.WixProject.GetTextForControl(node, out var font) ?? Environment.NewLine;
+            font.SetToFrameworkElement(textBox);
             ScrollViewer.SetHorizontalScrollBarVisibility(textBox, ScrollBarVisibility.Hidden);
             ScrollViewer.SetVerticalScrollBarVisibility(textBox, node.IsMultiLine() ? ScrollBarVisibility.Auto : ScrollBarVisibility.Hidden);
             textBox.AcceptsReturn = true;
@@ -526,14 +506,51 @@ namespace WixUiSimulator.Margin
                 Padding = default,
                 Margin = default
             };
-            button.Content = node.EvaluateTextValue();
+            button.Content = document.WixProject.GetTextForControl(node, out var font);
+            font.SetToFrameworkElement(button);
             LayoutControl(button, node);
             return button;
         }
         RichTextBox UpdateScrollableTextControl(string id, Grid parentControl, XElement node)
         {
-            var textBox = UpdateEditControl(id, parentControl, node);
+            var textBox = parentControl.Children.OfType<RichTextBox>().FirstOrDefault(l => l.Name == id) ?? new RichTextBox
+            {
+                Name = id,
+                Padding = default,
+                Margin = default
+            };
+            string content = document.WixProject.GetTextForControl(node, out var font) ?? Environment.NewLine;
+            font.SetToFrameworkElement(textBox);
+            if (content != textBox.Document.Tag?.ToString())
+            {
+                textBox.Document.Tag = content;
+                var contentBytes = Encoding.UTF8.GetBytes(content);
+                using var stream = new MemoryStream(contentBytes);
+                stream.Position = 0;
+                textBox.SelectAll();
+                try
+                {
+                    textBox.Selection.Load(stream, DataFormats.Rtf);
+                }
+                catch (Exception exception)
+                {
+                    Logger.Log(DebugContext.Margin | DebugContext.Exceptions, $"Failed to parse RTF for control {id} in {document.FileName}: {exception}.");
+                    try
+                    {
+                        stream.Position = 0;
+                        textBox.SelectAll();
+                        textBox.Selection.Load(stream, DataFormats.Text);
+                    }
+                    catch (Exception e2)
+                    {
+                        Logger.Log(DebugContext.Margin | DebugContext.Exceptions, $"Failed to parse text for control {id} in {document.FileName}: {e2}.");
+                    }
+                }
+            }
+            ScrollViewer.SetHorizontalScrollBarVisibility(textBox, ScrollBarVisibility.Hidden);
             ScrollViewer.SetVerticalScrollBarVisibility(textBox, ScrollBarVisibility.Auto);
+            textBox.AcceptsReturn = true;
+            LayoutControl(textBox, node);
             return textBox;
         }
         FrameworkElement? UpdateTextControl(string id, Grid parentControl, XElement node)
@@ -545,7 +562,9 @@ namespace WixUiSimulator.Margin
                 Margin = default,
                 TextWrapping = TextWrapping.Wrap
             };
-            label.Text = node.EvaluateTextValue();
+            label.Text = document.WixProject.GetTextForControl(node, out var font);
+            if (label.FontFamily.Source != font.Face) label.FontFamily = new(font.Face);
+            label.FontSize = font.Size;
             LayoutControl(label, node);
             return label;
         }
@@ -567,11 +586,11 @@ namespace WixUiSimulator.Margin
             control.VerticalAlignment = VerticalAlignment.Top;
 
             var margin = control.Margin;
-            margin.Left = node.EvaluateDoubleAttribute("X", margin.Left);
-            margin.Top = node.EvaluateDoubleAttribute("Y", margin.Top);
+            margin.Left = node.GetAttributeDoubleValue("X", margin.Left);
+            margin.Top = node.GetAttributeDoubleValue("Y", margin.Top);
             control.Margin = margin;
-            control.Width = node.EvaluateDoubleAttribute("Width", control.Width);
-            control.Height = node.EvaluateDoubleAttribute("Height", control.Height);
+            control.Width = node.GetAttributeDoubleValue("Width", control.Width);
+            control.Height = node.GetAttributeDoubleValue("Height", control.Height);
 
             control.Visibility = node.GetControlVisibility();
 

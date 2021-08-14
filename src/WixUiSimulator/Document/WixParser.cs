@@ -88,12 +88,10 @@ namespace WixUiSimulator.Document
                 WixNamespaceManager);
 
         public static string GetId(this XElement element) => element.Attribute("Id")?.Value ?? string.Empty;
-        public static string? EvaluateTextValue(this XElement? element) =>
-            EvaluateString(element.GetTextValue());
-        public static string? EvaluateAttribute(this XElement? element, string attributeName) =>
-            EvaluateString(element?.Attribute(attributeName)?.Value);
-        public static double EvaluateDoubleAttribute(this XElement? element, string attributeName, double defaultValue = default) =>
-            double.TryParse(element.EvaluateAttribute(attributeName) ?? string.Empty,
+        public static string? GetAttributeValue(this XElement? element, string attributeName) =>
+            element?.Attribute(attributeName)?.Value;
+        public static double GetAttributeDoubleValue(this XElement? element, string attributeName, double defaultValue = default) =>
+            double.TryParse(element.GetAttributeValue(attributeName) ?? string.Empty,
                             NumberStyles.Any, CultureInfo.InstalledUICulture, out var d)
                 ? d
                 : defaultValue;
@@ -101,8 +99,6 @@ namespace WixUiSimulator.Document
                                                                       element?.XPathSelectElements("wix:Text", WixNamespaceManager)
                                                                              .SingleOrDefault()
                                                                              ?.Value;
-        public static string? EvaluateString(string? s) => s;
-
         public static Visibility GetControlVisibility(this XElement element) =>
             element.HasYesAttribute("Hidden") ? Visibility.Hidden : Visibility.Visible;
         public static bool IsBitmap(this XElement element) => element.HasYesAttribute("Bitmap");
