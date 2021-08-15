@@ -422,7 +422,7 @@ namespace WixUiSimulator.Margin
             checkBox.Padding = default;
             checkBox.Margin = default;
             checkBox.Content = document.WixProject.GetTextForControl(node, out var font);
-            font.SetToFrameworkElement(checkBox);
+            font.ApplyToControl(checkBox);
             LayoutControl(checkBox, node);
             return checkBox;
         }
@@ -454,7 +454,7 @@ namespace WixUiSimulator.Margin
                 Margin = default
             };
             textBox.Text = document.WixProject.GetTextForControl(node, out var font) ?? Environment.NewLine;
-            font.SetToFrameworkElement(textBox);
+            font.ApplyToControl(textBox);
             ScrollViewer.SetHorizontalScrollBarVisibility(textBox, ScrollBarVisibility.Hidden);
             ScrollViewer.SetVerticalScrollBarVisibility(textBox, node.IsMultiLine() ? ScrollBarVisibility.Auto : ScrollBarVisibility.Hidden);
             textBox.AcceptsReturn = true;
@@ -507,7 +507,7 @@ namespace WixUiSimulator.Margin
                 Margin = default
             };
             button.Content = document.WixProject.GetTextForControl(node, out var font);
-            font.SetToFrameworkElement(button);
+            font.ApplyToControl(button);
             LayoutControl(button, node);
             return button;
         }
@@ -520,7 +520,7 @@ namespace WixUiSimulator.Margin
                 Margin = default
             };
             string content = document.WixProject.GetTextForControl(node, out var font) ?? Environment.NewLine;
-            font.SetToFrameworkElement(textBox);
+            font.ApplyToControl(textBox);
             if (content != textBox.Document.Tag?.ToString())
             {
                 textBox.Document.Tag = content;
@@ -563,8 +563,7 @@ namespace WixUiSimulator.Margin
                 TextWrapping = TextWrapping.Wrap
             };
             label.Text = document.WixProject.GetTextForControl(node, out var font);
-            if (label.FontFamily.Source != font.Face) label.FontFamily = new(font.Face);
-            label.FontSize = font.Size;
+            font.ApplyToTextBlock(label);
             LayoutControl(label, node);
             return label;
         }
