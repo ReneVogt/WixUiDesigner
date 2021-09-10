@@ -95,12 +95,11 @@ namespace WixUiSimulator.Document
                     return null;
                 }
 
-                var projectItem = WixParser.GetProjectItem(document.FilePath);
+                var projectItem = SolutionParser.GetProjectItem(document.FilePath);
                 if (projectItem is null)
                 {
                     Logger.Log(DebugContext.Document | DebugContext.WiX, $"{document.FilePath} is not a project item.");
                     return null;
-
                 }
 
                 var wixProject = WixProject.Get(projectItem);
