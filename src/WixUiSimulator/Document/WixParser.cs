@@ -10,7 +10,6 @@ using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -18,14 +17,8 @@ using System.Windows.Media.Imaging;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.XPath;
-using EnvDTE;
-using EnvDTE80;
-using Microsoft.VisualStudio.Shell;
-using Microsoft.VisualStudio.Shell.Interop;
-using Microsoft.VisualStudio.Threading;
 using WixUiSimulator.Logging;
 using WixUiSimulator.Properties;
-using Task = System.Threading.Tasks.Task;
 
 #nullable enable
 
@@ -37,8 +30,6 @@ namespace WixUiSimulator.Document
         
         public static Dictionary<string, string> InternalLocalization { get; }
 
-        static DTE2? dte;
-
         public static XmlNamespaceManager WixNamespaceManager { get; }
         static WixParser()
         {
@@ -46,18 +37,6 @@ namespace WixUiSimulator.Document
             WixNamespaceManager.AddNamespace("wix", "http://schemas.microsoft.com/wix/2006/wi");
             WixNamespaceManager.AddNamespace("wxl", "http://schemas.microsoft.com/wix/2006/localization");
             InternalLocalization = XDocument.Parse(Resources.WixUI_en_us).GetLocalizedStrings();
-        }
-
-        internal static async Task InitializeAsync(IServiceProvider serviceProvider, JoinableTaskFactory joinableTaskFactory, CancellationToken cancellationToken)
-        {
-            await joinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
-            dte = (DTE2?)serviceProvider?.GetService(typeof(SDTE));
-        }
-
-        internal static ProjectItem? GetProjectItem(string fileName)
-        {
-            ThreadHelper.ThrowIfNotOnUIThread();
-            return dte?.Solution?.FindProjectItem(fileName);
         }
 
         public static XDocument Load(string xml)
@@ -117,6 +96,10 @@ namespace WixUiSimulator.Document
             if (element.IsSorted()) keys = keys.OrderBy(k => k, StringComparer.InvariantCultureIgnoreCase);
             return keys.ToArray();
         }
+
+        public static IEnumerable<XElement> GetRadioButtonNodesFromGroup(this XElement groupNode) => groupNode.XPathSelectElements(
+            "//wix:RadioButtonGroup/wix:RadioButton",
+            WixNamespaceManager);
 
         public static ImageSource GetImageSource(this XElement element) => GetImageSource(element.GetTextValue());
         public static ImageSource GetImageSource(string? source)

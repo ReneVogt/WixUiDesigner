@@ -21,7 +21,7 @@ namespace WixUiSimulator
 {
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [Guid(Defines.PackageGuidString)]
-    [InstalledProductRegistration("#110", "#112", "0.2.0.0")]
+    [InstalledProductRegistration("#110", "#112", "0.2.0.1")]
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [ProvideOptionPage(typeof(Options), Defines.ProductName, "General", 0, 0, true)]
     public sealed class WixUiSimulatorPackage : AsyncPackage
@@ -65,10 +65,11 @@ namespace WixUiSimulator
             Options = (Options)GetDialogPage(typeof(Options));
 
             Logger.Initialize(this, JoinableTaskFactory);
+            WixProject.JoinableTaskFactory = JoinableTaskFactory;
 
             try
             {
-                await WixParser.InitializeAsync(this, JoinableTaskFactory, cancellationToken);
+                await SolutionParser.InitializeAsync(this, JoinableTaskFactory, cancellationToken);
                 await Logger.LogAsync(DebugContext.Package, "Package initialized.", cancellationToken);
             }
             catch (Exception ex)

@@ -386,7 +386,7 @@ namespace WixUiSimulator.Margin
                     "PathEdit" => UpdatePathEditControl(id, parentControl, node),
                     "ProgressBar" => UpdateProgressBarControl(id, parentControl, node),
                     "PushButton" => UpdatePushButtonControl(id, parentControl, node),
-                    //"RadioButtonGroup" => UpdateRadioButtonGroupControl(id, parentControl, node),
+                    "RadioButtonGroup" => UpdateRadioButtonGroupControl(id, parentControl, node),
                     "ScrollableText" => UpdateScrollableTextControl(id, parentControl, node),
                     //"SelectionTree" => UpdateSelectionTreeControl(id, parentControl, node),
                     "Text" => UpdateTextControl(id, parentControl, node),
@@ -510,6 +510,37 @@ namespace WixUiSimulator.Margin
             font.ApplyToControl(button);
             LayoutControl(button, node);
             return button;
+        }
+        FrameworkElement? UpdateRadioButtonGroupControl(string id, Grid parentControl, XElement groupNode)
+        {
+            var grid = parentControl.Children.OfType<Grid>().FirstOrDefault(l => l.Name == id) ?? new Grid
+            {
+                Name = id,
+                Margin = default
+            };
+            LayoutControl(grid, groupNode);
+
+            var buttonNodes = groupNode.GetRadioButtonNodesFromGroup().ToArray();
+            var buttonControls = grid.Children.OfType<RadioButton>().ToList();
+            foreach (var obsoleteControl in buttonControls.Skip(buttonNodes.Length))
+                grid.Children.Remove(obsoleteControl);
+            for (int i = buttonControls.Count; i < buttonNodes.Length; i++)
+            {
+                var createdButton = new RadioButton();
+                grid.Children.Add(createdButton);
+                buttonControls.Add(createdButton);
+            }
+
+            foreach(var (node, control) in buttonNodes.Zip(buttonControls, (n,c) => (n,c)))
+            {
+                if (node.Attributes().Any(a => a.Name == "Icon" || a.Name == "Bitmap"))
+                    Logger.Log(DebugContext.WiX|DebugContext.Document, $"RadioButton in group {id} is icon or bitmap, which is not yet supported.");
+                control.Content = document.WixProject.GetTextForControl(node, out var font);
+                font.ApplyToControl(control);
+                LayoutControl(control, node);
+            }
+
+            return grid;
         }
         RichTextBox UpdateScrollableTextControl(string id, Grid parentControl, XElement node)
         {
