@@ -21,7 +21,7 @@ namespace WixUiSimulator
 {
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [Guid(Defines.PackageGuidString)]
-    [InstalledProductRegistration("#110", "#112", "0.2.0.1")]
+    [InstalledProductRegistration("#110", "#112", "0.2.0.2")]
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [ProvideOptionPage(typeof(Options), Defines.ProductName, "General", 0, 0, true)]
     public sealed class WixUiSimulatorPackage : AsyncPackage
