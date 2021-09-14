@@ -509,6 +509,8 @@ namespace WixUiSimulator.Margin
             button.Content = document.WixProject.GetTextForControl(node, out var font);
             font.ApplyToControl(button);
             LayoutControl(button, node);
+            button.HorizontalContentAlignment = HorizontalAlignment.Center;
+            button.VerticalContentAlignment = VerticalAlignment.Center;
             return button;
         }
         FrameworkElement? UpdateRadioButtonGroupControl(string id, Grid parentControl, XElement groupNode)
